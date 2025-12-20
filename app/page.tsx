@@ -1,12 +1,7 @@
+
 "use client";
 
-import { cn } from "@/lib/utils";
-import {
-  AlertTriangle,
-  Calculator,
-  Flame,
-  Settings
-} from "lucide-react";
+import { Calculator } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { GraphView } from "../components/GraphView";
 import {
@@ -16,236 +11,59 @@ import {
 import { FactoryTabs } from "../components/dashboard/FactoryTabs";
 import { GlobalResearchPanel } from "../components/dashboard/GlobalResearchPanel";
 import { IOSummaryPanel } from "../components/dashboard/IOSummaryPanel";
+import { NodeView } from "../components/dashboard/NodeView";
+import { ProductionNode } from "../engine/types";
+import { useFactoryStore } from "../store/useFactoryStore";
 import itemsData from "../data/items.json";
-import { calculateProduction } from "../engine/planner";
-import { FactoryState, Item, ProductionNode, ResearchState } from "../engine/types";
+import { Item } from "../engine/types";
 
-// Cast itemsData to Item[] to satisfy strict typing
+// Types
 const items = itemsData as unknown as Item[];
-
+const sortedItems = [...items].sort((a, b) => a.name.localeCompare(b.name));
 // Filter lists for selectors
 const FERTILIZERS = items.filter(
   (i) =>
     i.category === "fertilizer" ||
     (Array.isArray(i.category) && i.category.includes("fertilizer")),
 );
-// Fuels are items with heat_value > 0
 const FUELS = items.filter((i) => i.heat_value && i.heat_value > 0);
 
-const RESEARCH_KEY = "alchemy_planner_research";
-
-const DEFAULT_RESEARCH: ResearchState = {
-  logisticsEfficiency: 0,
-  throwingEfficiency: 0,
-  factoryEfficiency: 0,
-  alchemySkill: 0,
-  fuelEfficiency: 0,
-  fertilizerEfficiency: 0,
-  salesAbility: 0,
-  negotiationSkill: 0,
-  customerMgmt: 0,
-  relicKnowledge: 0,
-};
-
-
-
-const DEFAULT_FACTORY: FactoryState = {
-  id: "default",
-  name: "Main Factory",
-  targets: [{ item: "Healing Potion", rate: 10 }],
-  config: {
-    factoryEfficiency: 0,
-    alchemySkill: 0,
-    fuelEfficiency: 0,
-    logisticsEfficiency: 1,
-    fertilizerEfficiency: 0,
-    salesAbility: 0,
-    throwingEfficiency: 0,
-    negotiationSkill: 0,
-    customerMgmt: 0,
-    relicKnowledge: 0,
-    selectedFertilizer: "",
-    selectedFuel: "",
-  },
-  viewMode: "graph",
-};
-
-const STORAGE_KEY = "alchemy_planner_factories";
 
 export default function PlannerPage() {
-  const [factories, setFactories] = useState<FactoryState[]>([]);
-  const [activeId, setActiveId] = useState<string>("default");
+  const {
+    factories,
+    activeFactoryId,
+    addFactory,
+  } = useFactoryStore();
+
   const [isLoaded, setIsLoaded] = useState(false);
-  const [research, setResearch] = useState<ResearchState>(DEFAULT_RESEARCH);
 
-
-  // Initialization & Migration
-  // Initialization
+  // Hydration handling
   useEffect(() => {
-    // 1. Load Research
-    console.log("[App] Init Effect Running");
-    const savedResearch = localStorage.getItem(RESEARCH_KEY);
-    if (savedResearch) {
-      try {
-        const parsed = JSON.parse(savedResearch);
-        console.log("[App] Loading Saved Research:", parsed);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setResearch({ ...DEFAULT_RESEARCH, ...parsed });
-      } catch (e) {
-        console.error("Failed to parse research", e);
-      }
+    // Avoid sync state update warning by deferring
+    if (useFactoryStore.persist.hasHydrated()) {
+      setTimeout(() => setIsLoaded(true), 0);
     } else {
-      console.log("[App] No saved research found");
+      const unsubscribe = useFactoryStore.persist.onFinishHydration(() => setIsLoaded(true));
+      return () => unsubscribe();
     }
-
-    // 2. Load Factories
-    const saved = localStorage.getItem(STORAGE_KEY);
-    let loadedFactories = false;
-
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setFactories(parsed);
-          setActiveId(parsed[0].id);
-          loadedFactories = true;
-        }
-      } catch (e) {
-        console.error("Failed to parse factories", e);
-      }
-    }
-
-    // 3. Fallback / Default
-    if (!loadedFactories) {
-      const initialFactory = { ...DEFAULT_FACTORY, id: crypto.randomUUID() };
-      setFactories([initialFactory]);
-      setActiveId(initialFactory.id);
-    }
-
-    // 4. Mark Loaded
-    setIsLoaded(true);
   }, []);
 
-  // Persistence
+  // Also force manual rehydrate kick if needed? 
+  // onFinishHydration might not fire if already hydrated.
+  // actually hasHydrated() check covers it.
+
+  const activeFactory = factories.find((f) => f.id === activeFactoryId);
+
+  // Initialize if empty
   useEffect(() => {
-    if (!isLoaded) return;
-
-    if (factories.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(factories));
+    if (isLoaded && factories.length === 0) {
+      addFactory();
     }
-    localStorage.setItem(RESEARCH_KEY, JSON.stringify(research));
-  }, [factories, research, isLoaded]);
+  }, [isLoaded, factories.length, addFactory]);
 
-  const activeFactory = useMemo(() => {
-    return (
-      factories.find((f) => f.id === activeId) ||
-      factories[0] ||
-      DEFAULT_FACTORY
-    );
-  }, [factories, activeId]);
-
-  // Actions
-  const updateActiveFactory = (
-    updates:
-      | Partial<FactoryState>
-      | ((prev: FactoryState) => Partial<FactoryState>),
-  ) => {
-    setFactories((prev) =>
-      prev.map((f) => {
-        if (f.id === activeId) {
-          const newValues =
-            typeof updates === "function" ? updates(f) : updates;
-          return { ...f, ...newValues };
-        }
-        return f;
-      }),
-    );
-  };
-
-  const updateConfig = (field: keyof FactoryState["config"], value: unknown) => {
-    updateActiveFactory((prev) => ({
-      config: { ...prev.config, [field]: value },
-    }));
-  };
-
-  const updateResearch = (field: keyof ResearchState, value: number) => {
-    setResearch((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const addFactory = () => {
-    const newFactory: FactoryState = {
-      ...DEFAULT_FACTORY,
-      id: crypto.randomUUID(),
-      name: `Factory ${factories.length + 1}`,
-    };
-    setFactories([...factories, newFactory]);
-    setActiveId(newFactory.id);
-  };
-
-  const removeFactory = (id: string) => {
-    const newFactories = factories.filter((f) => f.id !== id);
-    setFactories(newFactories);
-    if (activeId === id && newFactories.length > 0) {
-      setActiveId(newFactories[0].id);
-    }
-  };
-
-  // --- Production Calc ---
-  const sortedItems = useMemo(() => {
-    return [...items].sort((a, b) => a.name.localeCompare(b.name));
-  }, []);
-
-  const addTarget = () => {
-    updateActiveFactory((prev) => ({
-      targets: [...prev.targets, { item: sortedItems[0].name, rate: 10 }],
-    }));
-  };
-
-  const removeTarget = (index: number) => {
-    updateActiveFactory((prev) => {
-      const newTargets = [...prev.targets];
-      newTargets.splice(index, 1);
-      return { targets: newTargets };
-    });
-  };
-
-  const updateTarget = (
-    index: number,
-    field: "item" | "rate",
-    value: string | number,
-  ) => {
-    updateActiveFactory((prev) => {
-      const newTargets = [...prev.targets];
-      // @ts-expect-error this is fine
-      newTargets[index][field] = value;
-      return { targets: newTargets };
-    });
-  };
-
-  const productionTrees = useMemo(() => {
-    if (!activeFactory) return [];
-    if (activeFactory.targets.length === 0) return [];
-
-    // Merge factory config with global research
-    // Research overrides factory specific settings if they are 0?
-    // Or we just add them? Logic was: factory config holds overrides?
-    // Actually, earlier logic was just merging.
-    // PlannerConfig has full names. ResearchState has full names now.
-    // We can just spread them.
-    const config = {
-      ...activeFactory.config,
-      ...research,
-      // Ensure explicit overrides if needed, but spread should work if keys match.
-      // Note: activeFactory.config is PlannerConfig. research is ResearchState.
-      // keys match now.
-      selectedFertilizer: activeFactory.config.selectedFertilizer || undefined,
-      selectedFuel: activeFactory.config.selectedFuel || undefined,
-    };
-    return calculateProduction({
-      targets: activeFactory.targets,
-      ...config,
-    });
-  }, [activeFactory, research]);
+  // Derived Stats
+  const productionTrees = useMemo(() => activeFactory?.productionTrees || [], [activeFactory?.productionTrees]);
 
   const stats = useMemo(() => {
     let totalMachines = 0;
@@ -258,7 +76,6 @@ export default function PlannerPage() {
     }
 
     productionTrees.forEach((root) => traverse(root));
-
     return { totalMachines, totalPower };
   }, [productionTrees]);
 
@@ -267,27 +84,18 @@ export default function PlannerPage() {
     const outputs = new Map<string, number>();
 
     function traverse(node: ProductionNode, isRoot = false) {
-      // If root, it's a main output
       if (isRoot) {
         outputs.set(
           node.itemName,
           (outputs.get(node.itemName) || 0) + node.rate,
         );
       }
-
-      // Byproducts are outputs
       node.byproducts.forEach((bp) => {
         outputs.set(bp.itemName, (outputs.get(bp.itemName) || 0) + bp.rate);
       });
-
-      // Inputs
       if (node.inputs.length === 0 && node.deviceCount === 0) {
-        // It's a raw input (leaf node with no machine, usually)
-        // ACTUALLY: In our engine, raw resources might have deviceCount=0 (Water pump?).
-        // Let's assume leaves are inputs.
         inputs.set(node.itemName, (inputs.get(node.itemName) || 0) + node.rate);
       }
-
       node.inputs.forEach((n) => traverse(n));
     }
 
@@ -303,8 +111,9 @@ export default function PlannerPage() {
     };
   }, [productionTrees]);
 
-  if (!activeFactory)
-    return <div className="p-10 text-stone-500">Loading...</div>;
+  if (!isLoaded || !activeFactory)
+    return <div className="p-10 text-stone-500">Loading Planner...</div>;
+
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-200 font-sans p-2 lg:p-8 flex flex-col gap-4">
@@ -321,49 +130,22 @@ export default function PlannerPage() {
               </h1>
             </div>
           </div>
-
-
         </div>
 
         {/* Global Research Panel */}
-        <GlobalResearchPanel
-          research={research}
-          updateResearch={updateResearch}
-          onReset={() => setResearch(DEFAULT_RESEARCH)}
-        />
+        <GlobalResearchPanel />
 
         {/* Tab Bar */}
-        <FactoryTabs
-          factories={factories}
-          activeId={activeId}
-          setActiveId={setActiveId}
-          addFactory={addFactory}
-          removeFactory={(id) => removeFactory(id)}
-          updateActiveFactory={updateActiveFactory}
-        />
+        <FactoryTabs />
       </header>
 
       {/* Dashboard Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Panel 1: Production Targets */}
-        <ProductionTargetsPanel
-          targets={activeFactory.targets}
-          items={sortedItems}
-          addTarget={addTarget}
-          removeTarget={removeTarget}
-          updateTarget={updateTarget}
-        />
+        <ProductionTargetsPanel items={sortedItems} />
 
         {/* Panel 2: Configuration */}
-        <FactorySettingsPanel
-          config={{
-            selectedFertilizer: activeFactory.config.selectedFertilizer || "",
-            selectedFuel: activeFactory.config.selectedFuel || "",
-          }}
-          fertilizers={FERTILIZERS}
-          fuels={FUELS}
-          updateConfig={(field, value) => updateConfig(field, value)}
-        />
+        <FactorySettingsPanel fertilizers={FERTILIZERS} fuels={FUELS} />
 
         {/* Panel 3: IO Summary */}
         <IOSummaryPanel stats={stats} ioSummary={ioSummary} />
@@ -377,15 +159,9 @@ export default function PlannerPage() {
           <div className="flex-1 w-full h-full relative">
             {productionTrees && productionTrees.length > 0 ? (
               activeFactory.viewMode === "graph" ? (
-                // Pass factoryId so GraphView uses unique persistence keys
-                // Add key to force remount so onInit (viewport restore) fires and state is clean
-                <GraphView
-                  key={activeFactory.id}
-                  rootNodes={productionTrees}
-                  factoryId={activeFactory.id}
-                />
+                <GraphView key={activeFactory.id} />
               ) : (
-                <div className="p-8 overflow-auto custom-scrollbar h-full">
+                <div className="p-8 overflow-auto custom-scrollbar h-full pt-16">
                   <div className="min-w-max space-y-8">
                     {productionTrees.map((root, i) => (
                       <div key={i} className="border-l-4 border-stone-800 pl-4">
@@ -399,137 +175,16 @@ export default function PlannerPage() {
                 </div>
               )
             ) : (
-              <div className="flex items-center justify-center p-20 text-stone-600">
-                Add a product to start planning
+              <div className="flex items-center justify-center h-full text-stone-500 flex-col gap-4">
+                <div className="p-4 bg-stone-800/50 rounded-full">
+                  <Calculator className="w-8 h-8 opacity-50" />
+                </div>
+                <p>Add a target to begin planning</p>
               </div>
             )}
           </div>
         </section>
       </main>
-    </div>
-  );
-}
-
-
-
-function NodeView({
-  node,
-  depth = 0,
-}: {
-  node: ProductionNode;
-  depth?: number;
-}) {
-  if (depth > 12)
-    return (
-      <div className="ml-4 text-red-500 text-xs py-2">Max depth exceeded</div>
-    );
-
-  const isMachine = node.deviceCount > 0;
-  const isSaturated = node.isBeltSaturated;
-
-  return (
-    <div className="relative group">
-      <div
-        className={cn(
-          "flex items-center gap-4 p-3 pr-6 rounded-r-lg border-l-2 mb-3 transition-all",
-          isMachine
-            ? "bg-stone-800/40 border-l-amber-500 hover:bg-stone-800"
-            : "bg-stone-900/20 border-l-stone-700 text-stone-500",
-          isSaturated && "bg-red-900/10 border-l-red-500",
-        )}
-      >
-        {/* Connection Line */}
-        {depth > 0 && (
-          <div className="absolute -left-6 top-1/2 w-6 h-[1px] bg-stone-700"></div>
-        )}
-
-        {/* Content */}
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <span
-              className={cn(
-                "font-medium text-lg",
-                isMachine ? "text-stone-200" : "text-stone-500",
-              )}
-            >
-              {node.itemName}
-            </span>
-
-            <div className="flex flex-col items-start leading-none">
-              <span
-                className={cn(
-                  "text-sm font-mono",
-                  isSaturated ? "text-red-400" : "text-amber-500",
-                )}
-              >
-                {node.rate.toLocaleString(undefined, {
-                  maximumFractionDigits: 1,
-                })}
-                /m
-              </span>
-              {isSaturated && (
-                <span className="text-[10px] text-red-500 flex items-center gap-1 mt-0.5">
-                  <AlertTriangle size={10} /> Belt Limit ({node.beltLimit})
-                </span>
-              )}
-            </div>
-          </div>
-
-          {isMachine && (
-            <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-stone-400">
-              <span className="flex items-center gap-1.5">
-                <Settings size={12} className="text-stone-500" />
-                <span className="text-stone-300 font-bold">
-                  {node.deviceCount.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })}
-                  x
-                </span>
-                {node.deviceId || "Machine"}
-              </span>
-              {node.heatConsumption > 0 && (
-                <>
-                  <span className="flex items-center gap-1 text-orange-400/80">
-                    <Flame size={12} /> {node.heatConsumption.toLocaleString()}{" "}
-                    Heat
-                  </span>
-                  <span className="flex items-center gap-1 text-stone-500 border-l border-stone-700 pl-4 ml-2">
-                    <span className="text-stone-400 font-bold">
-                      {node.deviceCount.toLocaleString(undefined, {
-                        maximumFractionDigits: 2,
-                      })}
-                      x
-                    </span>
-                    Stone Furnace
-                  </span>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Byproducts */}
-          {node.byproducts.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {node.byproducts.map((bp, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-1 text-[10px] bg-indigo-900/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30"
-                >
-                  <span>+{bp.itemName}</span>
-                  <span className="opacity-75">{bp.rate.toFixed(1)}/m</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Children */}
-      <div className="pl-6 border-l border-stone-800 ml-6 space-y-1">
-        {node.inputs.map((input, idx) => (
-          <NodeView key={idx} node={input} depth={depth + 1} />
-        ))}
-      </div>
     </div>
   );
 }

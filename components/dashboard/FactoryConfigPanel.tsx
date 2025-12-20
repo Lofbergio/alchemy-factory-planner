@@ -1,21 +1,39 @@
 import { Plus, Settings, Trash2 } from "lucide-react";
 import { Item } from "../../engine/types";
+import { useFactoryStore } from "../../store/useFactoryStore";
 
 interface ProductionTargetsPanelProps {
-    targets: { item: string; rate: number }[];
     items: Item[]; // Sorted
-    addTarget: () => void;
-    removeTarget: (index: number) => void;
-    updateTarget: (index: number, field: "item" | "rate", value: string | number) => void;
 }
 
 export function ProductionTargetsPanel({
-    targets,
     items,
-    addTarget,
-    removeTarget,
-    updateTarget,
 }: ProductionTargetsPanelProps) {
+    const { factories, activeFactoryId, updateFactoryTargets } = useFactoryStore();
+    const activeFactory = factories.find((f) => f.id === activeFactoryId);
+
+    if (!activeFactory) return null;
+
+    const targets = activeFactory.targets;
+
+    const addTarget = () => {
+        const newTargets = [...targets, { item: items[0].name, rate: 10 }];
+        updateFactoryTargets(activeFactory.id, newTargets);
+    };
+
+    const removeTarget = (index: number) => {
+        const newTargets = [...targets];
+        newTargets.splice(index, 1);
+        updateFactoryTargets(activeFactory.id, newTargets);
+    };
+
+    const updateTarget = (index: number, field: "item" | "rate", value: string | number) => {
+        const newTargets = [...targets];
+        // @ts-expect-error dynamic access
+        newTargets[index][field] = value;
+        updateFactoryTargets(activeFactory.id, newTargets);
+    };
+
     return (
         <div className="bg-stone-900 p-4 rounded-lg border border-stone-800 space-y-3 flex flex-col">
             <div className="flex justify-between items-center mb-2">
@@ -80,18 +98,28 @@ export function ProductionTargetsPanel({
 }
 
 interface FactorySettingsPanelProps {
-    config: { selectedFertilizer: string; selectedFuel: string };
     fertilizers: Item[];
     fuels: Item[];
-    updateConfig: (field: "selectedFertilizer" | "selectedFuel", value: string) => void;
 }
 
 export function FactorySettingsPanel({
-    config,
     fertilizers,
     fuels,
-    updateConfig,
 }: FactorySettingsPanelProps) {
+    const { factories, activeFactoryId, updateFactoryConfig } = useFactoryStore();
+    const activeFactory = factories.find((f) => f.id === activeFactoryId);
+
+    if (!activeFactory) return null;
+
+    const config = {
+        selectedFertilizer: activeFactory.config.selectedFertilizer || "",
+        selectedFuel: activeFactory.config.selectedFuel || "",
+    };
+
+    const updateConfig = (field: "selectedFertilizer" | "selectedFuel", value: string) => {
+        updateFactoryConfig(activeFactory.id, { [field]: value });
+    };
+
     return (
         <div className="bg-stone-900 p-4 rounded-lg border border-stone-800 space-y-4">
             <h3 className="font-semibold text-stone-300 flex items-center gap-2 text-sm">

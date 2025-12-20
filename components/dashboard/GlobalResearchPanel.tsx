@@ -1,24 +1,16 @@
 import { Coins, Flame, Leaf, Settings, Truck, Zap } from "lucide-react";
-import { ResearchState } from "../../engine/types";
 import { cn } from "../../lib/utils";
+import { useFactoryStore } from "../../store/useFactoryStore";
 
-interface GlobalResearchPanelProps {
-    research: ResearchState;
-    updateResearch: (field: keyof ResearchState, value: number) => void;
-    onReset: () => void;
-}
+export function GlobalResearchPanel() {
+    const { research, setResearch, resetResearch } = useFactoryStore();
 
-export function GlobalResearchPanel({
-    research,
-    updateResearch,
-    onReset,
-}: GlobalResearchPanelProps) {
     return (
         <div className="bg-stone-900 px-6 py-4 rounded-xl border border-stone-800 shadow-xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                     className="text-[10px] text-stone-600 hover:text-amber-400 font-bold uppercase tracking-wider bg-stone-950/80 px-2 py-1 rounded"
-                    onClick={onReset}
+                    onClick={resetResearch}
                 >
                     Reset Research
                 </button>
@@ -38,7 +30,7 @@ export function GlobalResearchPanel({
                     label="Logistics"
                     icon={<Truck size={12} />}
                     value={research.logisticsEfficiency}
-                    onChange={(v: number) => updateResearch("logisticsEfficiency", v)}
+                    onChange={(v: number) => setResearch("logisticsEfficiency", v)}
                     color="text-blue-400"
                     description={`Belt Speed ${60 + research.logisticsEfficiency * 15}/min`}
                 />
@@ -46,7 +38,7 @@ export function GlobalResearchPanel({
                     label="Throwing"
                     icon={<Zap size={12} />}
                     value={research.throwingEfficiency}
-                    onChange={(v: number) => updateResearch("throwingEfficiency", v)}
+                    onChange={(v: number) => setResearch("throwingEfficiency", v)}
                     color="text-cyan-400"
                     description={`Catapult Rate ${100 + research.throwingEfficiency * 25}%`}
                 />
@@ -54,7 +46,7 @@ export function GlobalResearchPanel({
                     label="Factory Eff"
                     icon={<Settings size={12} />}
                     value={research.factoryEfficiency}
-                    onChange={(v: number) => updateResearch("factoryEfficiency", v)}
+                    onChange={(v: number) => setResearch("factoryEfficiency", v)}
                     color="text-amber-400"
                     description={`Prod Speed ${100 + research.factoryEfficiency * 25}%`}
                 />
@@ -62,7 +54,7 @@ export function GlobalResearchPanel({
                     label="Alchemy"
                     icon={<Zap size={12} />}
                     value={research.alchemySkill}
-                    onChange={(v: number) => updateResearch("alchemySkill", v)}
+                    onChange={(v: number) => setResearch("alchemySkill", v)}
                     color="text-purple-400"
                     description={`Extractor Output +${100 + research.alchemySkill * 6}%`}
                 />
@@ -70,7 +62,7 @@ export function GlobalResearchPanel({
                     label="Fuel Eff"
                     icon={<Flame size={12} />}
                     value={research.fuelEfficiency}
-                    onChange={(v: number) => updateResearch("fuelEfficiency", v)}
+                    onChange={(v: number) => setResearch("fuelEfficiency", v)}
                     color="text-orange-400"
                     description={`Fuel Heat +${research.fuelEfficiency * 10}%`}
                 />
@@ -78,7 +70,7 @@ export function GlobalResearchPanel({
                     label="Fertilizer"
                     icon={<Leaf size={12} />}
                     value={research.fertilizerEfficiency}
-                    onChange={(v: number) => updateResearch("fertilizerEfficiency", v)}
+                    onChange={(v: number) => setResearch("fertilizerEfficiency", v)}
                     color="text-green-400"
                     description={`Nutrient Value +${research.fertilizerEfficiency * 10}%`}
                 />
@@ -86,7 +78,7 @@ export function GlobalResearchPanel({
                     label="Sales"
                     icon={<Coins size={12} />}
                     value={research.salesAbility}
-                    onChange={(v: number) => updateResearch("salesAbility", v)}
+                    onChange={(v: number) => setResearch("salesAbility", v)}
                     color="text-yellow-400"
                     description={`Shop Profit ${100 + research.salesAbility * 3}%`}
                 />
@@ -94,7 +86,7 @@ export function GlobalResearchPanel({
                     label="Negotiation"
                     icon={<Coins size={12} />}
                     value={research.negotiationSkill}
-                    onChange={(v: number) => updateResearch("negotiationSkill", v)}
+                    onChange={(v: number) => setResearch("negotiationSkill", v)}
                     color="text-emerald-400"
                     description={`Contract Amount ${100 + research.negotiationSkill * 25}%`}
                 />
@@ -102,7 +94,7 @@ export function GlobalResearchPanel({
                     label="Customer"
                     icon={<Coins size={12} />}
                     value={research.customerMgmt}
-                    onChange={(v: number) => updateResearch("customerMgmt", v)}
+                    onChange={(v: number) => setResearch("customerMgmt", v)}
                     color="text-pink-400"
                     description={`Quest Rewards ${100 + research.customerMgmt * 6}%`}
                 />
@@ -110,7 +102,7 @@ export function GlobalResearchPanel({
                     label="Relic"
                     icon={<Zap size={12} />}
                     value={research.relicKnowledge}
-                    onChange={(v: number) => updateResearch("relicKnowledge", v)}
+                    onChange={(v: number) => setResearch("relicKnowledge", v)}
                     color="text-indigo-400"
                     description={`Withdrawal Bonus ${100 + research.relicKnowledge * 10}%`}
                 />
