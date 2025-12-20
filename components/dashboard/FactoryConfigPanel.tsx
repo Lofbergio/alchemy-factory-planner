@@ -1,0 +1,142 @@
+import { Plus, Settings, Trash2 } from "lucide-react";
+import { Item } from "../../engine/types";
+
+interface ProductionTargetsPanelProps {
+    targets: { item: string; rate: number }[];
+    items: Item[]; // Sorted
+    addTarget: () => void;
+    removeTarget: (index: number) => void;
+    updateTarget: (index: number, field: "item" | "rate", value: string | number) => void;
+}
+
+export function ProductionTargetsPanel({
+    targets,
+    items,
+    addTarget,
+    removeTarget,
+    updateTarget,
+}: ProductionTargetsPanelProps) {
+    return (
+        <div className="bg-stone-900 p-4 rounded-lg border border-stone-800 space-y-3 flex flex-col">
+            <div className="flex justify-between items-center mb-2">
+                <h2 className="text-xs font-bold text-stone-500 uppercase flex items-center gap-2">
+                    <Settings size={12} /> Production Targets
+                </h2>
+                <button
+                    onClick={addTarget}
+                    className="text-xs flex items-center gap-1 text-stone-500 hover:text-amber-400 font-bold px-2 py-1 rounded border border-stone-800 border-dashed hover:border-amber-500/50 transition-colors"
+                >
+                    <Plus size={12} /> Add
+                </button>
+            </div>
+
+            <div className="space-y-2 overflow-y-auto custom-scrollbar max-h-[200px] flex-1">
+                {targets.map((target, idx) => (
+                    <div
+                        key={idx}
+                        className="flex gap-2 items-center bg-stone-950/50 p-2 rounded border border-stone-800/50 text-sm"
+                    >
+                        <select
+                            className="bg-transparent text-amber-100 font-medium outline-none flex-1 w-24 focus:text-amber-400 text-xs"
+                            value={target.item}
+                            onChange={(e) => updateTarget(idx, "item", e.target.value)}
+                        >
+                            {items.map((item) => (
+                                <option
+                                    key={item.id}
+                                    value={item.name}
+                                    className="bg-stone-900"
+                                >
+                                    {item.name}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="flex items-center">
+                            <input
+                                type="number"
+                                className="bg-transparent text-amber-100 font-medium outline-none w-12 text-right focus:text-amber-400 text-xs"
+                                value={target.rate}
+                                onChange={(e) =>
+                                    updateTarget(idx, "rate", parseFloat(e.target.value) || 0)
+                                }
+                            />
+                            <span className="text-[10px] text-stone-500 font-mono ml-1">
+                                /m
+                            </span>
+                        </div>
+                        {targets.length > 1 && (
+                            <button
+                                onClick={() => removeTarget(idx)}
+                                className="text-stone-600 hover:text-red-500 transition-colors p-1"
+                            >
+                                <Trash2 size={12} />
+                            </button>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+interface FactorySettingsPanelProps {
+    config: { selectedFertilizer: string; selectedFuel: string };
+    fertilizers: Item[];
+    fuels: Item[];
+    updateConfig: (field: "selectedFertilizer" | "selectedFuel", value: string) => void;
+}
+
+export function FactorySettingsPanel({
+    config,
+    fertilizers,
+    fuels,
+    updateConfig,
+}: FactorySettingsPanelProps) {
+    return (
+        <div className="bg-stone-900 p-4 rounded-lg border border-stone-800 space-y-4">
+            <h3 className="font-semibold text-stone-300 flex items-center gap-2 text-sm">
+                <Settings size={14} /> Factory Configuration
+            </h3>
+
+            <div className="space-y-3">
+                <div>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase mb-1 block">
+                        Fertilizer Strategy
+                    </label>
+                    <select
+                        className="w-full bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-xs focus:border-amber-500/50 outline-none text-stone-300"
+                        value={config.selectedFertilizer}
+                        onChange={(e) =>
+                            updateConfig("selectedFertilizer", e.target.value)
+                        }
+                    >
+                        <option value="">-- No Fertilizer --</option>
+                        {fertilizers.map((f) => (
+                            <option key={f.id} value={f.name}>
+                                {f.name} (Val: {f.nutrient_value})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label className="text-[10px] font-bold text-stone-500 uppercase mb-1 block">
+                        Fuel Type
+                    </label>
+                    <select
+                        className="w-full bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-xs focus:border-amber-500/50 outline-none text-stone-300"
+                        value={config.selectedFuel}
+                        onChange={(e) => updateConfig("selectedFuel", e.target.value)}
+                    >
+                        <option value="">-- Select Fuel --</option>
+                        {fuels.map((f) => (
+                            <option key={f.id} value={f.name}>
+                                {f.name} (Heat: {f.heat_value})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+        </div>
+    );
+}

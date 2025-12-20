@@ -1,103 +1,66 @@
 "use client";
 
-import { clsx, type ClassValue } from "clsx";
+import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   Calculator,
-  Coins,
   Flame,
-  GitGraph,
-  LayoutList,
-  Leaf,
-  Plus,
-  PlusCircle,
-  Settings,
-  Trash2,
-  Truck,
-  X,
-  Zap,
+  Settings
 } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
-import { twMerge } from "tailwind-merge";
+import { useEffect, useMemo, useState } from "react";
 import { GraphView } from "../components/GraphView";
+import {
+  FactorySettingsPanel,
+  ProductionTargetsPanel,
+} from "../components/dashboard/FactoryConfigPanel";
+import { FactoryTabs } from "../components/dashboard/FactoryTabs";
+import { GlobalResearchPanel } from "../components/dashboard/GlobalResearchPanel";
+import { IOSummaryPanel } from "../components/dashboard/IOSummaryPanel";
 import itemsData from "../data/items.json";
 import { calculateProduction } from "../engine/planner";
-import { ProductionNode } from "../engine/types";
+import { FactoryState, Item, ProductionNode, ResearchState } from "../engine/types";
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// Cast itemsData to Item[] to satisfy strict typing
+const items = itemsData as unknown as Item[];
 
 // Filter lists for selectors
-const FERTILIZERS = itemsData.filter(
+const FERTILIZERS = items.filter(
   (i) =>
     i.category === "fertilizer" ||
     (Array.isArray(i.category) && i.category.includes("fertilizer")),
 );
 // Fuels are items with heat_value > 0
-const FUELS = itemsData.filter((i) => i.heat_value && i.heat_value > 0);
+const FUELS = items.filter((i) => i.heat_value && i.heat_value > 0);
 
 const RESEARCH_KEY = "alchemy_planner_research";
 
-interface ResearchState {
-  logisticsEff: number;
-  throwingEff: number; // Catapult
-  factoryEff: number;
-  alchemySkill: number;
-  fuelEff: number;
-  fertilizerEff: number;
-  salesAbility: number;
-  negotiationSkill: number;
-  customerMgmt: number;
-  relicKnowledge: number;
-}
-
 const DEFAULT_RESEARCH: ResearchState = {
-  logisticsEff: 0,
-  throwingEff: 0,
-  factoryEff: 0,
+  logisticsEfficiency: 0,
+  throwingEfficiency: 0,
+  factoryEfficiency: 0,
   alchemySkill: 0,
-  fuelEff: 0,
-  fertilizerEff: 0,
+  fuelEfficiency: 0,
+  fertilizerEfficiency: 0,
   salesAbility: 0,
   negotiationSkill: 0,
   customerMgmt: 0,
   relicKnowledge: 0,
 };
 
-interface FactoryState {
-  id: string;
-  name: string;
-  targets: { item: string; rate: number }[];
-  config: {
-    factoryEff: number;
-    alchemySkill: number;
-    fuelEff: number;
-    logisticsEff: number;
-    fertilizerEff: number;
-    salesAbility: number;
-    throwingEff: number;
-    negotiationSkill: number;
-    customerMgmt: number;
-    relicKnowledge: number;
-    selectedFertilizer: string;
-    selectedFuel: string;
-  };
-  viewMode: "graph" | "list";
-}
+
 
 const DEFAULT_FACTORY: FactoryState = {
   id: "default",
   name: "Main Factory",
   targets: [{ item: "Healing Potion", rate: 10 }],
   config: {
-    factoryEff: 0,
+    factoryEfficiency: 0,
     alchemySkill: 0,
-    fuelEff: 0,
-    logisticsEff: 1,
-    fertilizerEff: 0,
+    fuelEfficiency: 0,
+    logisticsEfficiency: 1,
+    fertilizerEfficiency: 0,
     salesAbility: 0,
-    throwingEff: 0,
+    throwingEfficiency: 0,
     negotiationSkill: 0,
     customerMgmt: 0,
     relicKnowledge: 0,
@@ -114,8 +77,7 @@ export default function PlannerPage() {
   const [activeId, setActiveId] = useState<string>("default");
   const [isLoaded, setIsLoaded] = useState(false);
   const [research, setResearch] = useState<ResearchState>(DEFAULT_RESEARCH);
-  const [isRenaming, setIsRenaming] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
+
 
   // Initialization & Migration
   // Initialization
@@ -127,6 +89,7 @@ export default function PlannerPage() {
       try {
         const parsed = JSON.parse(savedResearch);
         console.log("[App] Loading Saved Research:", parsed);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setResearch({ ...DEFAULT_RESEARCH, ...parsed });
       } catch (e) {
         console.error("Failed to parse research", e);
@@ -154,7 +117,7 @@ export default function PlannerPage() {
 
     // 3. Fallback / Default
     if (!loadedFactories) {
-      let initialFactory = { ...DEFAULT_FACTORY, id: crypto.randomUUID() };
+      const initialFactory = { ...DEFAULT_FACTORY, id: crypto.randomUUID() };
       setFactories([initialFactory]);
       setActiveId(initialFactory.id);
     }
@@ -199,7 +162,7 @@ export default function PlannerPage() {
     );
   };
 
-  const updateConfig = (field: keyof FactoryState["config"], value: any) => {
+  const updateConfig = (field: keyof FactoryState["config"], value: unknown) => {
     updateActiveFactory((prev) => ({
       config: { ...prev.config, [field]: value },
     }));
@@ -219,35 +182,17 @@ export default function PlannerPage() {
     setActiveId(newFactory.id);
   };
 
-  const removeFactory = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (factories.length <= 1) return;
+  const removeFactory = (id: string) => {
     const newFactories = factories.filter((f) => f.id !== id);
     setFactories(newFactories);
-    if (activeId === id) {
+    if (activeId === id && newFactories.length > 0) {
       setActiveId(newFactories[0].id);
-    }
-  };
-
-  const startRename = (id: string, currentName: string) => {
-    setIsRenaming(id);
-    setRenameValue(currentName);
-  };
-
-  const finishRename = () => {
-    if (isRenaming) {
-      setFactories((prev) =>
-        prev.map((f) =>
-          f.id === isRenaming ? { ...f, name: renameValue } : f,
-        ),
-      );
-      setIsRenaming(null);
     }
   };
 
   // --- Production Calc ---
   const sortedItems = useMemo(() => {
-    return [...itemsData].sort((a, b) => a.name.localeCompare(b.name));
+    return [...items].sort((a, b) => a.name.localeCompare(b.name));
   }, []);
 
   const addTarget = () => {
@@ -271,7 +216,7 @@ export default function PlannerPage() {
   ) => {
     updateActiveFactory((prev) => {
       const newTargets = [...prev.targets];
-      // @ts-ignore
+      // @ts-expect-error this is fine
       newTargets[index][field] = value;
       return { targets: newTargets };
     });
@@ -281,20 +226,24 @@ export default function PlannerPage() {
     if (!activeFactory) return [];
     if (activeFactory.targets.length === 0) return [];
 
-    return calculateProduction({
-      targets: activeFactory.targets,
-      factoryEfficiency: research.factoryEff,
-      alchemySkill: research.alchemySkill,
-      fuelEfficiency: research.fuelEff,
-      logisticsEfficiency: research.logisticsEff,
-      fertilizerEfficiency: research.fertilizerEff,
-      salesAbility: research.salesAbility,
-      throwingEfficiency: research.throwingEff,
-      negotiationSkill: research.negotiationSkill,
-      customerMgmt: research.customerMgmt,
-      relicKnowledge: research.relicKnowledge,
+    // Merge factory config with global research
+    // Research overrides factory specific settings if they are 0?
+    // Or we just add them? Logic was: factory config holds overrides?
+    // Actually, earlier logic was just merging.
+    // PlannerConfig has full names. ResearchState has full names now.
+    // We can just spread them.
+    const config = {
+      ...activeFactory.config,
+      ...research,
+      // Ensure explicit overrides if needed, but spread should work if keys match.
+      // Note: activeFactory.config is PlannerConfig. research is ResearchState.
+      // keys match now.
       selectedFertilizer: activeFactory.config.selectedFertilizer || undefined,
       selectedFuel: activeFactory.config.selectedFuel || undefined,
+    };
+    return calculateProduction({
+      targets: activeFactory.targets,
+      ...config,
     });
   }, [activeFactory, research]);
 
@@ -377,374 +326,47 @@ export default function PlannerPage() {
         </div>
 
         {/* Global Research Panel */}
-        <div className="bg-stone-900 px-6 py-4 rounded-xl border border-stone-800 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              className="text-[10px] text-stone-600 hover:text-amber-400 font-bold uppercase tracking-wider bg-stone-950/80 px-2 py-1 rounded"
-              onClick={() => setResearch(DEFAULT_RESEARCH)}
-            >
-              Reset Research
-            </button>
-          </div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-1.5 bg-indigo-500/10 rounded-md">
-              <Zap size={14} className="text-indigo-400" />
-            </div>
-            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest">
-              Global Research
-            </h3>
-            <div className="h-[1px] flex-1 bg-stone-800/50"></div>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            <ResearchSlider
-              label="Logistics"
-              icon={<Truck size={12} />}
-              value={research.logisticsEff}
-              onChange={(v: number) => updateResearch("logisticsEff", v)}
-              color="text-blue-400"
-              description={`Belt Speed ${60 + research.logisticsEff * 15}/min`}
-            />
-            <ResearchSlider
-              label="Throwing"
-              icon={<Zap size={12} />}
-              value={research.throwingEff}
-              onChange={(v: number) => updateResearch("throwingEff", v)}
-              color="text-cyan-400"
-              description={`Catapult Rate ${100 + research.throwingEff * 25}%`}
-            />
-            <ResearchSlider
-              label="Factory Eff"
-              icon={<Settings size={12} />}
-              value={research.factoryEff}
-              onChange={(v: number) => updateResearch("factoryEff", v)}
-              color="text-amber-400"
-              description={`Prod Speed ${100 + research.factoryEff * 25}%`}
-            />
-            <ResearchSlider
-              label="Alchemy"
-              icon={<Zap size={12} />}
-              value={research.alchemySkill}
-              onChange={(v: number) => updateResearch("alchemySkill", v)}
-              color="text-purple-400"
-              description={`Extractor Output +${100 + research.alchemySkill * 6}%`}
-            />
-            <ResearchSlider
-              label="Fuel Eff"
-              icon={<Flame size={12} />}
-              value={research.fuelEff}
-              onChange={(v: number) => updateResearch("fuelEff", v)}
-              color="text-orange-400"
-              description={`Fuel Heat +${research.fuelEff * 10}%`}
-            />
-            <ResearchSlider
-              label="Fertilizer"
-              icon={<Leaf size={12} />}
-              value={research.fertilizerEff}
-              onChange={(v: number) => updateResearch("fertilizerEff", v)}
-              color="text-green-400"
-              description={`Nutrient Value +${research.fertilizerEff * 10}%`}
-            />
-            <ResearchSlider
-              label="Sales"
-              icon={<Coins size={12} />}
-              value={research.salesAbility}
-              onChange={(v: number) => updateResearch("salesAbility", v)}
-              color="text-yellow-400"
-              description={`Shop Profit ${100 + research.salesAbility * 3}%`}
-            />
-            <ResearchSlider
-              label="Negotiation"
-              icon={<Coins size={12} />}
-              value={research.negotiationSkill}
-              onChange={(v: number) => updateResearch("negotiationSkill", v)}
-              color="text-emerald-400"
-              description={`Contract Amount ${100 + research.negotiationSkill * 25}%`}
-            />
-            <ResearchSlider
-              label="Customer"
-              icon={<Coins size={12} />}
-              value={research.customerMgmt}
-              onChange={(v: number) => updateResearch("customerMgmt", v)}
-              color="text-pink-400"
-              description={`Quest Rewards ${100 + research.customerMgmt * 6}%`}
-            />
-            <ResearchSlider
-              label="Relic"
-              icon={<Zap size={12} />}
-              value={research.relicKnowledge}
-              onChange={(v: number) => updateResearch("relicKnowledge", v)}
-              color="text-indigo-400"
-              description={`Withdrawal Bonus ${100 + research.relicKnowledge * 10}%`}
-            />
-          </div>
-        </div>
+        <GlobalResearchPanel
+          research={research}
+          updateResearch={updateResearch}
+          onReset={() => setResearch(DEFAULT_RESEARCH)}
+        />
 
         {/* Tab Bar */}
-        <div className="flex overflow-x-auto custom-scrollbar items-center gap-1">
-          {factories.map((factory) => (
-            <div
-              key={factory.id}
-              onClick={() => setActiveId(factory.id)}
-              onDoubleClick={() => startRename(factory.id, factory.name)}
-              className={cn(
-                "group flex items-center gap-2 px-4 py-2.5 rounded-t-lg border-b-2 transition-all cursor-pointer min-w-[140px] select-none",
-                activeId === factory.id
-                  ? "bg-stone-900 border-amber-500 text-amber-100 font-medium"
-                  : "bg-stone-950/30 border-transparent text-stone-500 hover:bg-stone-900/50 hover:text-stone-300",
-              )}
-            >
-              {isRenaming === factory.id ? (
-                <input
-                  autoFocus
-                  className="bg-stone-950 text-xs px-1 py-0.5 rounded border border-amber-500/50 outline-none w-24"
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onBlur={finishRename}
-                  onKeyDown={(e) => e.key === "Enter" && finishRename()}
-                />
-              ) : (
-                <span className="text-sm whitespace-nowrap">
-                  {factory.name}
-                </span>
-              )}
-
-              <div
-                className={cn(
-                  "flex gap-1 opacity-0 transition-opacity ml-auto",
-                  activeId === factory.id && "opacity-100",
-                  "group-hover:opacity-100",
-                )}
-              >
-                {factories.length > 1 && (
-                  <button
-                    onClick={(e) => removeFactory(factory.id, e)}
-                    className="text-stone-600 hover:text-red-400 p-0.5 hover:bg-stone-800 rounded"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-          <button
-            onClick={addFactory}
-            className="px-3 py-2 text-stone-600 hover:text-amber-400 hover:bg-stone-900/50 rounded-t-lg transition-colors border-b-2 border-transparent"
-          >
-            <PlusCircle size={18} />
-          </button>
-          <div className="flex-1 border-b-2 border-stone-900/50"></div>
-
-          {/* View Toggle Bar (Moved here as a sub-header for the main view) */}
-          <div className="flex justify-end ml-2">
-            <div className="flex bg-stone-900 p-1 rounded-md border border-stone-800">
-              <button
-                onClick={() => updateActiveFactory({ viewMode: "graph" })}
-                className={cn(
-                  "p-1.5 rounded flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors",
-                  activeFactory.viewMode === "graph"
-                    ? "bg-amber-600/20 text-amber-500"
-                    : "text-stone-500 hover:text-stone-300",
-                )}
-              >
-                <GitGraph size={14} /> Graph
-              </button>
-              <button
-                onClick={() => updateActiveFactory({ viewMode: "list" })}
-                className={cn(
-                  "p-1.5 rounded flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors",
-                  activeFactory.viewMode === "list"
-                    ? "bg-amber-600/20 text-amber-500"
-                    : "text-stone-500 hover:text-stone-300",
-                )}
-              >
-                <LayoutList size={14} /> List
-              </button>
-            </div>
-          </div>
-        </div>
+        <FactoryTabs
+          factories={factories}
+          activeId={activeId}
+          setActiveId={setActiveId}
+          addFactory={addFactory}
+          removeFactory={(id) => removeFactory(id)}
+          updateActiveFactory={updateActiveFactory}
+        />
       </header>
 
       {/* Dashboard Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Panel 1: Production Targets */}
-        <div className="bg-stone-900 p-4 rounded-lg border border-stone-800 space-y-3 flex flex-col">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-xs font-bold text-stone-500 uppercase flex items-center gap-2">
-              <Settings size={12} /> Production Targets
-            </h2>
-            <button
-              onClick={addTarget}
-              className="text-xs flex items-center gap-1 text-stone-500 hover:text-amber-400 font-bold px-2 py-1 rounded border border-stone-800 border-dashed hover:border-amber-500/50 transition-colors"
-            >
-              <Plus size={12} /> Add
-            </button>
-          </div>
-
-          <div className="space-y-2 overflow-y-auto custom-scrollbar max-h-[200px] flex-1">
-            {activeFactory.targets.map((target, idx) => (
-              <div
-                key={idx}
-                className="flex gap-2 items-center bg-stone-950/50 p-2 rounded border border-stone-800/50 text-sm"
-              >
-                <select
-                  className="bg-transparent text-amber-100 font-medium outline-none flex-1 w-24 focus:text-amber-400 text-xs"
-                  value={target.item}
-                  onChange={(e) => updateTarget(idx, "item", e.target.value)}
-                >
-                  {sortedItems.map((item) => (
-                    <option
-                      key={item.id}
-                      value={item.name}
-                      className="bg-stone-900"
-                    >
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex items-center">
-                  <input
-                    type="number"
-                    className="bg-transparent text-amber-100 font-medium outline-none w-12 text-right focus:text-amber-400 text-xs"
-                    value={target.rate}
-                    onChange={(e) =>
-                      updateTarget(idx, "rate", parseFloat(e.target.value) || 0)
-                    }
-                  />
-                  <span className="text-[10px] text-stone-500 font-mono ml-1">
-                    /m
-                  </span>
-                </div>
-                {activeFactory.targets.length > 1 && (
-                  <button
-                    onClick={() => removeTarget(idx)}
-                    className="text-stone-600 hover:text-red-500 transition-colors p-1"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <ProductionTargetsPanel
+          targets={activeFactory.targets}
+          items={sortedItems}
+          addTarget={addTarget}
+          removeTarget={removeTarget}
+          updateTarget={updateTarget}
+        />
 
         {/* Panel 2: Configuration */}
-        <div className="bg-stone-900 p-4 rounded-lg border border-stone-800 space-y-4">
-          <h3 className="font-semibold text-stone-300 flex items-center gap-2 text-sm">
-            <Settings size={14} /> Factory Configuration
-          </h3>
-
-          <div className="space-y-3">
-            <div>
-              <label className="text-[10px] font-bold text-stone-500 uppercase mb-1 block">
-                Fertilizer Strategy
-              </label>
-              <select
-                className="w-full bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-xs focus:border-amber-500/50 outline-none text-stone-300"
-                value={activeFactory.config.selectedFertilizer}
-                onChange={(e) =>
-                  updateConfig("selectedFertilizer", e.target.value)
-                }
-              >
-                <option value="">-- No Fertilizer --</option>
-                {FERTILIZERS.map((f) => (
-                  <option key={f.id} value={f.name}>
-                    {f.name} (Val: {f.nutrient_value})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold text-stone-500 uppercase mb-1 block">
-                Fuel Type
-              </label>
-              <select
-                className="w-full bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-xs focus:border-amber-500/50 outline-none text-stone-300"
-                value={activeFactory.config.selectedFuel}
-                onChange={(e) => updateConfig("selectedFuel", e.target.value)}
-              >
-                <option value="">-- Select Fuel --</option>
-                {FUELS.map((f) => (
-                  <option key={f.id} value={f.name}>
-                    {f.name} (Heat: {f.heat_value})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
+        <FactorySettingsPanel
+          config={{
+            selectedFertilizer: activeFactory.config.selectedFertilizer || "",
+            selectedFuel: activeFactory.config.selectedFuel || "",
+          }}
+          fertilizers={FERTILIZERS}
+          fuels={FUELS}
+          updateConfig={(field, value) => updateConfig(field, value)}
+        />
 
         {/* Panel 3: IO Summary */}
-        <div className="bg-stone-900 p-4 rounded-lg border border-stone-800 flex flex-col gap-4">
-          <h3 className="font-semibold text-stone-300 flex items-center gap-2 text-sm justify-between">
-            <span className="flex items-center gap-2"><LayoutList size={14} /> Input / Output Summary</span>
-            <div className="flex gap-4 items-center bg-stone-950/50 px-3 py-2 rounded border border-stone-800/50 justify-center">
-              <div className="flex flex-col items-center">
-                <span className="text-[9px] text-stone-500 uppercase tracking-wider font-bold">
-                  Machines
-                </span>
-                <span className="text-sm font-mono text-amber-400">
-                  {stats.totalMachines.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-              <div className="w-[1px] h-6 bg-stone-800"></div>
-              <div className="flex flex-col items-center">
-                <span className="text-[9px] text-stone-500 uppercase tracking-wider font-bold">
-                  Total Heat
-                </span>
-                <span className="text-sm font-mono text-orange-400">
-                  {stats.totalPower.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </h3>
-
-
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar max-h-[160px] grid grid-cols-2 gap-4">
-            {/* Inputs */}
-            <div>
-              <span className="text-[10px] font-bold text-stone-500 uppercase block border-b border-stone-800/50 mb-2">
-                Inputs
-              </span>
-              <div className="space-y-1">
-                {ioSummary.inputs.length > 0 ? (
-                  ioSummary.inputs.map((item, i) => (
-                    <div key={i} className="flex justify-between text-xs">
-                      <span className="text-stone-400">{item.name}</span>
-                      <span className="text-amber-500 font-mono">
-                        {item.rate.toFixed(1)}/m
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-xs text-stone-600 italic">None</span>
-                )}
-              </div>
-            </div>
-            {/* Outputs */}
-            <div>
-              <span className="text-[10px] font-bold text-stone-500 uppercase block border-b border-stone-800/50 mb-2">
-                Outputs
-              </span>
-              <div className="space-y-1">
-                {ioSummary.outputs.map((item, i) => (
-                  <div key={i} className="flex justify-between text-xs">
-                    <span className="text-stone-300 font-medium">
-                      {item.name}
-                    </span>
-                    <span className="text-green-400 font-mono">
-                      {item.rate.toFixed(1)}/m
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <IOSummaryPanel stats={stats} ioSummary={ioSummary} />
       </div>
 
       <main className="flex-1 flex flex-col gap-6 min-h-0">
@@ -788,36 +410,7 @@ export default function PlannerPage() {
   );
 }
 
-function ResearchSlider({
-  label,
-  value,
-  onChange,
-  icon,
-  color,
-  description,
-}: any) {
-  return (
-    <div className="bg-stone-950/30 p-2 rounded border border-stone-800/50">
-      <div className="flex justify-between text-xs mb-1">
-        <span className="flex items-center gap-1.5 text-stone-400 font-bold">
-          {icon} {label}
-        </span>
-        <span className={cn("font-mono font-bold", color)}>{value}</span>
-      </div>
-      <input
-        type="range"
-        min="0"
-        max="10"
-        value={value}
-        onChange={(e) => onChange(parseInt(e.target.value))}
-        className="w-full h-1.5 bg-stone-800 rounded-lg appearance-none cursor-pointer accent-stone-500 hover:accent-stone-400 mb-1"
-      />
-      <div className="text-[10px] text-stone-500 text-right font-mono truncate">
-        {description}
-      </div>
-    </div>
-  );
-}
+
 
 function NodeView({
   node,

@@ -97,3 +97,24 @@ export interface PlannerConfig {
   selectedFertilizer?: string;
   selectedFuel?: string;
 }
+
+export interface ResearchState {
+  logisticsEfficiency: number;
+  throwingEfficiency: number; // Catapult
+  factoryEfficiency: number;
+  alchemySkill: number;
+  fuelEfficiency: number;
+  fertilizerEfficiency: number;
+  salesAbility: number;
+  negotiationSkill: number;
+  customerMgmt: number;
+  relicKnowledge: number;
+}
+
+export interface FactoryState {
+  id: string;
+  name: string;
+  targets: { item: string; rate: number }[];
+  config: Omit<PlannerConfig, "targets" | "targetItem" | "targetRate">;
+  viewMode: "graph" | "list";
+}

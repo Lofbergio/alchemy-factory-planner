@@ -47,11 +47,11 @@ export function calculateProduction(config: PlannerConfig): ProductionNode[] {
         factoryEfficiency,
         logisticsEfficiency,
         fertilizerEfficiency,
-        salesAbility,
-        throwingEfficiency,
-        negotiationSkill,
-        customerMgmt,
-        relicKnowledge,
+        // salesAbility,
+        // throwingEfficiency,
+        // negotiationSkill,
+        // customerMgmt,
+        // relicKnowledge,
         selectedFertilizer,
         selectedFuel,
     } = config;
@@ -139,7 +139,7 @@ function solveNode(
         (o) => o.name.toLowerCase() === itemName,
     );
     if (outputDef) {
-        let count =
+        const count =
             typeof outputDef.count === "string"
                 ? parseFloat(outputDef.count)
                 : outputDef.count;
@@ -253,7 +253,7 @@ function solveNode(
     const byproducts: { itemName: string; rate: number }[] = [];
     recipe.outputs.forEach((out) => {
         if (out.name.toLowerCase() !== itemName) {
-            let count =
+            const count =
                 typeof out.count === "string" ? parseFloat(out.count) : out.count;
             let percentage = 100;
             if (out.percentage)

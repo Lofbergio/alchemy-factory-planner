@@ -1,187 +1,24 @@
 "use client";
 
-import React, { useMemo, useState, useCallback, useEffect } from "react";
 import {
-  ReactFlow,
   Background,
   Controls,
-  Node,
   Edge,
-  useNodesState,
-  useEdgesState,
-  Position,
   MarkerType,
-  Handle,
+  Node,
+  OnInit,
+  OnMoveEnd,
+  ReactFlow,
   ReactFlowInstance,
+  useEdgesState,
+  useNodesState
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import dagre from "@dagrejs/dagre";
+import { RotateCcw } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ProductionNode } from "../engine/types";
-import { Flame, Settings, AlertTriangle, RotateCcw } from "lucide-react";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-// ---------------------------
-// Dagre Layout Logic
-// ---------------------------
-const nodeWidth = 250;
-const nodeHeight = 100; // Approx
-
-const getLayoutedElements = (
-  nodes: Node[],
-  edges: Edge[],
-  direction = "LR",
-) => {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-  const isHorizontal = direction === "LR";
-  dagreGraph.setGraph({
-    rankdir: direction,
-    ranksep: 160,
-    nodesep: 100,
-  });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  const newNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    return {
-      ...node,
-      targetPosition: isHorizontal ? Position.Left : Position.Top,
-      sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
-      // We are shifting the dagre node position (anchor=center center) to the top left
-      // so it matches the React Flow node anchor point (top left).
-      position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
-      },
-      style: { width: nodeWidth }, // Enforce width
-    };
-  });
-
-  return { nodes: newNodes, edges };
-};
-
-// ---------------------------
-// Custom Node Component
-// ---------------------------
-function CustomNode({ data }: { data: ProductionNode }) {
-  // Cast to access properties safely if TS complains
-  const nodeData = data as ProductionNode;
-
-  const isMachine = nodeData.deviceCount > 0;
-  const isSaturated = nodeData.isBeltSaturated;
-  const isTarget = nodeData.isTarget;
-
-  return (
-    <div
-      className={cn(
-        "p-3 rounded-lg border-2 shadow-lg min-w-[220px] bg-stone-900 transition-colors",
-        isTarget
-          ? "border-green-500 bg-green-950/20"
-          : isMachine
-            ? "border-amber-600/50"
-            : "border-stone-700",
-        isSaturated && !isTarget && "border-red-500 shadow-red-500/20",
-      )}
-    >
-      {/* Header */}
-      <div className="flex justify-between items-start mb-2 border-b border-stone-800 pb-2">
-        <span
-          className={cn(
-            "font-bold text-sm truncate",
-            isTarget
-              ? "text-green-400"
-              : isMachine
-                ? "text-amber-100"
-                : "text-stone-400",
-          )}
-        >
-          {isTarget ? "Production Target" : nodeData.itemName}
-        </span>
-        <div className="text-right">
-          <div
-            className={cn(
-              "text-xs font-mono font-bold",
-              isTarget
-                ? "text-green-400"
-                : isSaturated
-                  ? "text-red-400"
-                  : "text-amber-400",
-            )}
-          >
-            {nodeData.rate.toLocaleString(undefined, {
-              maximumFractionDigits: 1,
-            })}
-            /m
-          </div>
-          {isSaturated && !isTarget && (
-            <div className="text-[8px] text-red-500 flex items-center justify-end gap-0.5">
-              <AlertTriangle size={8} /> Limit
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="space-y-1">
-        {isTarget && (
-          <div className="flex items-center gap-2 text-xs text-green-300">
-            <span className="font-bold">{nodeData.itemName}</span>
-          </div>
-        )}
-
-        {isMachine && (
-          <div className="flex items-center gap-2 text-xs text-stone-400">
-            <Settings size={12} className="text-stone-500" />
-            <span className="text-stone-200 font-bold">
-              {nodeData.deviceCount.toLocaleString(undefined, {
-                maximumFractionDigits: 2,
-              })}
-              x
-            </span>
-            <span className="truncate max-w-[100px]">{nodeData.deviceId}</span>
-          </div>
-        )}
-
-        {nodeData.heatConsumption > 0 && (
-          <div className="flex items-center gap-2 text-xs text-orange-400">
-            <Flame size={12} />
-            <span>{nodeData.heatConsumption.toLocaleString()} Heat</span>
-          </div>
-        )}
-      </div>
-
-      {/* Handles for Edges */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="w-3 h-3 bg-stone-500 border-2 border-stone-800"
-      />
-      {/* Targets usually don't have source, but we leave it flexible */}
-      {!isTarget && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          className="w-3 h-3 bg-stone-500 border-2 border-stone-800"
-        />
-      )}
-    </div>
-  );
-}
+import { CustomNode } from "./graph/CustomNode";
+import { getLayoutedElements } from "./graph/layout";
 
 const nodeTypes = {
   custom: CustomNode,
@@ -229,14 +66,10 @@ export function GraphView({
   });
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
 
-  // We don't need the useEffect for loading anymore since we lazy init
-  // But we might need it if factoryId changes WITHOUT remount?
-  // We enforced remount with key={id}, so lazy init is sufficient.
-
   // Handle Init: Restore Viewport OR Fit View
   // Use 'any' for instance to avoid strict generic mismatches with ReactFlow types
-  const onInit = useCallback(
-    (instance: any) => {
+  const onInit: OnInit = useCallback(
+    (instance) => {
       setRfInstance(instance);
 
       const savedViewport = localStorage.getItem(VP_KEY);
@@ -413,8 +246,8 @@ export function GraphView({
   );
 
   // Handle Move End -> Save Viewport
-  const onMoveEnd = useCallback(
-    (event: any, viewport: any) => {
+  const onMoveEnd: OnMoveEnd = useCallback(
+    (_event, viewport) => {
       localStorage.setItem(VP_KEY, JSON.stringify(viewport));
     },
     [VP_KEY],
@@ -442,6 +275,7 @@ export function GraphView({
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        // @ts-expect-error this is fine actually
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
@@ -468,4 +302,3 @@ export function GraphView({
     </div>
   );
 }
-
