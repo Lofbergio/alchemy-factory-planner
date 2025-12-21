@@ -65,6 +65,7 @@ export interface Device {
 }
 
 export interface ProductionNode {
+  id?: string; // Unique identifier for graph separation
   itemName: string;
   rate: number; // Items per minute
   isRaw: boolean;
@@ -77,12 +78,14 @@ export interface ProductionNode {
   isBeltSaturated?: boolean;
   beltLimit?: number;
   isTarget?: boolean; // For visualization nodes
+  suppliedRate?: number;
 }
 
 export interface PlannerConfig {
   targetItem?: string; // Optional for legacy/single compat
   targetRate?: number;
   targets: { item: string; rate: number }[]; // New multi-target support
+  availableResources: { item: string; rate: number }[];
 
   fuelEfficiency: number; // 0-10 (Research level)
   alchemySkill: number; // 0-10 (Research level)
@@ -115,6 +118,7 @@ export interface FactoryState {
   id: string;
   name: string;
   targets: { item: string; rate: number }[];
-  config: Omit<PlannerConfig, "targets" | "targetItem" | "targetRate">;
+  availableResources: { item: string; rate: number }[];
+  config: Omit<PlannerConfig, "targets" | "targetItem" | "targetRate" | "availableResources">;
   viewMode: "graph" | "list";
 }

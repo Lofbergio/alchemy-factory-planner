@@ -22,7 +22,8 @@ export function generateGraph(
     const edgeRates = new Map<string, number>();
 
     function traverse(node: ProductionNode, parentName?: string) {
-        const key = node.itemName;
+        // Use explicit ID if available to prevent merging of Source vs Production nodes
+        const key = node.id || node.itemName;
 
         // Update or Create
         if (mergedNodes.has(key)) {
@@ -30,6 +31,7 @@ export function generateGraph(
             existing.rate += node.rate;
             existing.deviceCount += node.deviceCount;
             existing.heatConsumption += node.heatConsumption;
+            existing.suppliedRate = (existing.suppliedRate || 0) + (node.suppliedRate || 0);
             // Recalculate saturation based on total rate
             existing.isBeltSaturated = existing.rate > (existing.beltLimit || 60);
         } else {
@@ -38,7 +40,7 @@ export function generateGraph(
 
         // Record Relationship & Rate
         if (parentName) {
-            const edgeKey = `${key}-${parentName}`;
+            const edgeKey = `${key}___${parentName}`;
             const currentRate = edgeRates.get(edgeKey) || 0;
             edgeRates.set(edgeKey, currentRate + node.rate);
         }
@@ -51,7 +53,7 @@ export function generateGraph(
 
     // Create React Flow Nodes (Production Network)
     const rfNodes: Node[] = Array.from(mergedNodes.values()).map((n) => ({
-        id: n.itemName,
+        id: n.id || n.itemName, // Use ID if distinct
         type: "custom",
         data: n as unknown as Record<string, unknown>,
         position: { x: 0, y: 0 },
@@ -61,7 +63,7 @@ export function generateGraph(
     const rfEdges: Edge[] = [];
 
     edgeRates.forEach((rate, key) => {
-        const [source, target] = key.split("-");
+        const [source, target] = key.split("___");
 
         rfEdges.push({
             id: key,
@@ -107,8 +109,8 @@ export function generateGraph(
 
         // Create Edge from Production -> Target
         rfEdges.push({
-            id: `${root.itemName}-${targetId}`,
-            source: root.itemName,
+            id: `${root.id || root.itemName}-${targetId}`,
+            source: root.id || root.itemName,
             target: targetId,
             animated: true,
             type: "smoothstep",

@@ -21,10 +21,10 @@ export function NodeView({
         <div className="relative group">
             <div
                 className={`flex items-center gap-4 p-3 pr-6 rounded-r-lg border-l-2 mb-3 transition-all ${isMachine
-                        ? "bg-stone-800/40 border-l-amber-500 hover:bg-stone-800"
-                        : node.isRaw
-                            ? "bg-green-900/10 border-l-green-600 hover:bg-green-900/20"
-                            : "bg-blue-900/10 border-l-blue-500 hover:bg-blue-900/20"
+                    ? "bg-stone-800/40 border-l-amber-500 hover:bg-stone-800"
+                    : node.isRaw
+                        ? "bg-green-900/10 border-l-green-600 hover:bg-green-900/20"
+                        : "bg-blue-900/10 border-l-blue-500 hover:bg-blue-900/20"
                     } ${isSaturated ? "border-l-red-500 bg-red-900/10" : ""}`}
             >
                 <div className="flex-1">
@@ -48,7 +48,13 @@ export function NodeView({
                     </div>
                     <div className="text-xs text-stone-500 font-mono">
                         {node.rate.toFixed(1)}/m
-                        {node.isRaw && " (Raw Input)"}
+                        {node.suppliedRate && node.suppliedRate > 0.01 ? (
+                            <span className="text-green-500 ml-1 font-bold">
+                                ({node.suppliedRate.toFixed(1)} Supplied)
+                            </span>
+                        ) : (
+                            node.isRaw && " (Raw Input)"
+                        )}
                     </div>
 
                     {isMachine && (

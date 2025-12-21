@@ -85,7 +85,7 @@ export function FactoryTabs() {
             ))}
             <button
                 onClick={addFactory}
-                className="px-3 py-2 text-stone-600 hover:text-amber-400 hover:bg-stone-900/50 rounded-t-lg transition-colors border-b-2 border-transparent"
+                className="px-3 py-2 text-stone-600 hover:text-amber-400 hover:bg-stone-900/50 rounded-t-lg transition-colors border-b-2 border-transparent cursor-pointer"
             >
                 <PlusCircle size={18} />
             </button>
@@ -98,7 +98,7 @@ export function FactoryTabs() {
                         <button
                             onClick={() => setViewMode(activeFactory.id, "graph")}
                             className={cn(
-                                "p-1.5 rounded flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors",
+                                "p-1.5 rounded flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer",
                                 activeFactory.viewMode === "graph"
                                     ? "bg-amber-600/20 text-amber-500"
                                     : "text-stone-500 hover:text-stone-300",
@@ -109,7 +109,7 @@ export function FactoryTabs() {
                         <button
                             onClick={() => setViewMode(activeFactory.id, "list")}
                             className={cn(
-                                "p-1.5 rounded flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors",
+                                "p-1.5 rounded flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer",
                                 activeFactory.viewMode === "list"
                                     ? "bg-amber-600/20 text-amber-500"
                                     : "text-stone-500 hover:text-stone-300",

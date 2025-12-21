@@ -7,6 +7,7 @@ import { GraphView } from "../components/GraphView";
 import {
   FactorySettingsPanel,
   ProductionTargetsPanel,
+  AvailableResourcesPanel,
 } from "../components/dashboard/FactoryConfigPanel";
 import { FactoryTabs } from "../components/dashboard/FactoryTabs";
 import { GlobalResearchPanel } from "../components/dashboard/GlobalResearchPanel";
@@ -140,9 +141,12 @@ export default function PlannerPage() {
       </header>
 
       {/* Dashboard Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Panel 1: Production Targets */}
         <ProductionTargetsPanel items={sortedItems} />
+
+        {/* Panel 2: Available Resources */}
+        <AvailableResourcesPanel items={sortedItems} />
 
         {/* Panel 2: Configuration */}
         <FactorySettingsPanel fertilizers={FERTILIZERS} fuels={FUELS} />

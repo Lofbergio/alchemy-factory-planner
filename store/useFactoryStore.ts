@@ -45,7 +45,7 @@ const DEFAULT_RESEARCH: ResearchState = {
 // Initial Factory config
 const DEFAULT_FACTORY_CONFIG: Omit<
     PlannerConfig,
-    "targets" | "targetItem" | "targetRate"
+    "targets" | "targetItem" | "targetRate" | "availableResources"
 > = {
     factoryEfficiency: 0,
     alchemySkill: 0,
@@ -82,6 +82,10 @@ interface FactoryStore {
         id: string,
         targets: { item: string; rate: number }[]
     ) => void;
+    updateFactoryAvailableResources: (
+        id: string,
+        resources: { item: string; rate: number }[]
+    ) => void;
 
     // Graph Logic
     calculateAndLayout: () => void; // Uses current state to calc
@@ -105,6 +109,7 @@ export const useFactoryStore = create<FactoryStore>()(
                     id,
                     name: `Factory ${get().factories.length + 1}`,
                     targets: [],
+                    availableResources: [],
                     config: DEFAULT_FACTORY_CONFIG,
                     viewMode: "graph",
                     nodes: [],
@@ -186,6 +191,15 @@ export const useFactoryStore = create<FactoryStore>()(
                 get().calculateAndLayout();
             },
 
+            updateFactoryAvailableResources: (id, resources) => {
+                set((state) => ({
+                    factories: state.factories.map((f) =>
+                        f.id === id ? { ...f, availableResources: resources } : f
+                    ),
+                }));
+                get().calculateAndLayout();
+            },
+
             setViewMode: (id, mode) => {
                 set((state) => ({
                     factories: state.factories.map((f) =>
@@ -216,6 +230,7 @@ export const useFactoryStore = create<FactoryStore>()(
 
                 const calculationConfig: PlannerConfig = {
                     targets: factory.targets,
+                    availableResources: factory.availableResources,
                     ...factory.config,
                     ...state.research,
                     selectedFertilizer: factory.config.selectedFertilizer,
@@ -246,6 +261,7 @@ export const useFactoryStore = create<FactoryStore>()(
 
                 const calculationConfig: PlannerConfig = {
                     targets: factory.targets,
+                    availableResources: factory.availableResources,
                     ...factory.config,
                     ...state.research,
                     selectedFertilizer: factory.config.selectedFertilizer,

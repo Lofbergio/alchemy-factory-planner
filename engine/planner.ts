@@ -68,6 +68,16 @@ export function calculateProduction(config: PlannerConfig): ProductionNode[] {
 
     const beltLimit = 60 + logisticsEfficiency * 15;
 
+    // Create a mutable pool of available resources
+    const resourcePool = new Map<string, number>();
+    if (config.availableResources) {
+        config.availableResources.forEach(res => {
+            const current = resourcePool.get(res.item.toLowerCase()) || 0;
+            resourcePool.set(res.item.toLowerCase(), current + res.rate);
+        });
+        console.log("[Planner] Resource Pool Initialized:", Array.from(resourcePool.entries()));
+    }
+
     const ctx: CalcContext = {
         speedMultiplier,
         fuelMultiplier,
@@ -89,7 +99,7 @@ export function calculateProduction(config: PlannerConfig): ProductionNode[] {
     const roots: ProductionNode[] = [];
 
     for (const t of finalTargets) {
-        const root = solveNode(t.item.toLowerCase(), t.rate, ctx);
+        const root = solveNode(t.item.toLowerCase(), t.rate, ctx, resourcePool);
         if (root) roots.push(root);
     }
 
@@ -100,10 +110,24 @@ function solveNode(
     itemName: string,
     requiredRate: number,
     ctx: CalcContext,
+    resourcePool: Map<string, number>,
     visited = new Set<string>(),
 ): ProductionNode | null {
     const item = itemsMap.get(itemName);
     if (!item) return null;
+
+    // --- CHECK AVAILABLE RESOURCES ---
+    let neededRate = requiredRate;
+    const available = resourcePool.get(itemName) || 0;
+
+    console.log(`[Planner] Item: ${itemName}, Required: ${requiredRate}, Available: ${available}`);
+
+    if (available > 0) {
+        const used = Math.min(available, requiredRate);
+        resourcePool.set(itemName, available - used);
+        neededRate = requiredRate - used;
+        console.log(`[Planner] Consumed ${used} of ${itemName}. Remaining needed: ${neededRate}`);
+    }
 
     // Detect Loop: If already visited, we treat this as a "Loop Terminal".
     // We WILL calculate this node's machine needs (so user sees Nursery etc.),
@@ -115,20 +139,38 @@ function solveNode(
 
     const recipes = recipesByOutput.get(itemName);
 
-    // Base case: Raw material or No Recipe found
+    // Helper to return a raw/source node
+    const createRawNode = (rate: number, isSaturated: boolean) => ({
+        id: `${itemName}-raw`,
+        itemName: item.name,
+        rate: rate,
+        isRaw: true,
+        suppliedRate: rate, // If raw/source created here, it might be fully supplied? Context dependent.
+        deviceId: undefined,
+        deviceCount: 0,
+        heatConsumption: 0,
+        inputs: [],
+        byproducts: [],
+        beltLimit: ctx.beltLimit,
+        isBeltSaturated: isSaturated,
+    });
+
+
+    // Case 0: Fully satisfy by available resources
+    // If neededRate is effectively zero (or very small due to floats), return Source node
+    if (neededRate <= 0.0001) {
+        // We return a raw node, and we mark it as fully supplied (original requiredRate)
+        const raw = createRawNode(requiredRate, requiredRate > ctx.beltLimit);
+        raw.suppliedRate = requiredRate;
+        // The createRawNode helper sets rate to requiredRate, which is correct (it enters the system)
+        // effectively 0 needs to be PRODUCED, but the rate of item flow is requiredRate.
+        return raw;
+    }
+
+    // Case 1: No recipe found -> It MUST be a Raw Material
     if (!recipes || recipes.length === 0) {
-        return {
-            itemName: item.name,
-            rate: requiredRate,
-            isRaw: true,
-            deviceId: undefined,
-            deviceCount: 0,
-            heatConsumption: 0,
-            inputs: [],
-            byproducts: [],
-            beltLimit: ctx.beltLimit,
-            isBeltSaturated: requiredRate > ctx.beltLimit,
-        };
+        // If we still need some, but no recipe, it's a raw input
+        return createRawNode(requiredRate, requiredRate > ctx.beltLimit);
     }
 
     const recipe = recipes[0];
@@ -198,7 +240,7 @@ function solveNode(
             itemsPerMinPerMachine = calculatedRate;
 
             const fertNeededPerItem = item.required_nutrients / nutrientValue;
-            const totalFertilizerRate = requiredRate * fertNeededPerItem;
+            const totalFertilizerRate = neededRate * fertNeededPerItem;
 
             fertilizerInput = {
                 name: fertilizerItem.name,
@@ -212,7 +254,7 @@ function solveNode(
         itemsPerMinPerMachine = (outputCount / baseTime) * 60 * ctx.speedMultiplier;
     }
 
-    const machinesNeeded = requiredRate / itemsPerMinPerMachine;
+    const machinesNeeded = neededRate / itemsPerMinPerMachine;
 
     // 3. Inputs & Heat
     const inputs: ProductionNode[] = [];
@@ -242,6 +284,7 @@ function solveNode(
                     fuelItem.name.toLowerCase(),
                     fuelRate,
                     ctx,
+                    resourcePool,
                     nextVisited,
                 );
                 if (fuelNode) inputs.push(fuelNode);
@@ -275,7 +318,7 @@ function solveNode(
             }
 
             const outCount = count * (percentage / 100) * qMult;
-            const rate = (outCount / outputCount) * requiredRate;
+            const rate = (outCount / outputCount) * neededRate;
 
             byproducts.push({ itemName: out.name, rate });
         }
@@ -283,15 +326,34 @@ function solveNode(
 
     // Inputs
     if (!isLoop) {
+        // If we have supplied resources, add a "Source" node to the inputs to visualize it
+        if (neededRate < requiredRate && neededRate > 0) {
+            const suppliedAmount = requiredRate - neededRate;
+            inputs.push({
+                id: `${itemName}-source`,
+                itemName: item.name, // Display name matches (no "Available" suffix needed)
+                rate: suppliedAmount,
+                isRaw: true,
+                deviceCount: 0,
+                heatConsumption: 0,
+                inputs: [],
+                byproducts: [],
+                beltLimit: ctx.beltLimit,
+                isBeltSaturated: suppliedAmount > ctx.beltLimit,
+                suppliedRate: suppliedAmount
+            });
+        }
+
         recipe.inputs.forEach((input) => {
             const inputCountPerCraft = input.count;
-            const inputRate = (inputCountPerCraft / outputCount) * requiredRate;
+            const inputRate = (inputCountPerCraft / outputCount) * neededRate;
 
             // Recurse
             const inputNode = solveNode(
                 input.name.toLowerCase(),
                 inputRate,
                 ctx,
+                resourcePool,
                 nextVisited,
             );
             if (inputNode) {
@@ -360,8 +422,9 @@ function solveNode(
     }
 
     return {
+        id: `${itemName}-prod`,
         itemName: item.name,
-        rate: requiredRate,
+        rate: neededRate, // Only produce what is still needed!
         isRaw: false, // It has a recipe/device!
         recipeId: recipe.id,
         deviceId: device?.id,
@@ -370,6 +433,7 @@ function solveNode(
         inputs,
         byproducts,
         beltLimit: ctx.beltLimit,
-        isBeltSaturated: requiredRate > ctx.beltLimit,
+        isBeltSaturated: neededRate > ctx.beltLimit,
+        // suppliedRate is handled by the separate Source node we injected into inputs
     };
 }
