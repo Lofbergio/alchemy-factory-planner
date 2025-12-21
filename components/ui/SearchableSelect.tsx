@@ -34,9 +34,6 @@ export function SearchableSelect({
     const [highlightedIndex, setHighlightedIndex] = useState(0);
     const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-    useEffect(() => {
-        setHighlightedIndex(0);
-    }, [search, isOpen]);
 
     useEffect(() => {
         if (isOpen && optionRefs.current[highlightedIndex]) {
@@ -92,6 +89,7 @@ export function SearchableSelect({
         }
 
         setIsOpen(open);
+        setHighlightedIndex(0);
         if (!open) {
             // Short timeout to allow click to process if needed, or just reset immediately
             setSearch("");
@@ -163,7 +161,10 @@ export function SearchableSelect({
                             className="bg-transparent w-full text-xs text-stone-200 outline-none placeholder:text-stone-600"
                             placeholder="Search..."
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setHighlightedIndex(0);
+                            }}
                             onKeyDown={(e) => {
                                 if (e.key === "ArrowDown") {
                                     e.preventDefault();
@@ -188,7 +189,10 @@ export function SearchableSelect({
                         />
                         {search && (
                             <button
-                                onClick={() => setSearch("")}
+                                onClick={() => {
+                                    setSearch("");
+                                    setHighlightedIndex(0);
+                                }}
                                 className="text-stone-600 hover:text-stone-400"
                             >
                                 <X size={12} />
