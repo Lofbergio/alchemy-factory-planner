@@ -21,7 +21,7 @@ const cinzel = Cinzel({
 });
 
 export const metadata: Metadata = {
-  title: "Alchemy Planner - Factory Calculator",
+  title: "Alchemy Factory Tools",
   description: "Production planner and calculator for Alchemy Factory game",
 };
 

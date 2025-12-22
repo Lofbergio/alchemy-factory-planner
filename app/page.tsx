@@ -147,7 +147,7 @@ export default function PlannerPage() {
 
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-cinzel)] text-gradient-gold tracking-wide">
-                  Alchemy Factory Planner
+                  Alchemy Factory Tools
                 </h1>
                 <Sparkles className="w-4 h-4 text-[var(--accent-purple)] opacity-60 hidden md:block" />
               </div>
