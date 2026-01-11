@@ -64,6 +64,10 @@ export interface Device {
   name: string;
   category: string;
   heat_consuming_speed?: number;
+  heat_self?: number; // For furnaces: heat generated per second
+  slots?: number; // For furnaces: number of device slots available
+  parent?: string; // For heated devices: parent furnace device ID
+  slots_required?: number; // For heated devices: slots consumed in parent
 }
 
 export interface ProductionNode {
@@ -71,11 +75,14 @@ export interface ProductionNode {
   itemName: string;
   rate: number; // Items per minute (gross production)
   netOutputRate?: number; // Net output after internal consumption (for loops)
+  isConsumptionReference?: boolean; // True if this is a fuel/fertilizer consumption reference
   isRaw: boolean;
   recipeId?: string;
   deviceId?: string;
   deviceCount: number;
   heatConsumption: number;
+  parentFurnaceId?: string; // Parent furnace device ID (e.g., "stone-stove")
+  parentFurnaceCount?: number; // Number of parent furnaces needed
   inputs: ProductionNode[];
   byproducts: { itemName: string; rate: number }[];
   isBeltSaturated?: boolean;

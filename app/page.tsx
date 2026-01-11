@@ -88,13 +88,20 @@ export default function PlannerPage() {
 
     function traverse(node: ProductionNode, isRoot = false) {
       const key = node.id || node.itemName;
+
+      // Skip consumption references - they don't contribute to IO summary
+      // The actual production nodes will be traversed separately
+      if (node.isConsumptionReference) return;
+
       if (visited.has(key)) return;
       visited.add(key);
 
       if (isRoot) {
+        // Use netOutputRate for LP planner (accounts for internal consumption)
+        const outputRate = node.netOutputRate ?? node.rate;
         outputs.set(
           node.itemName,
-          (outputs.get(node.itemName) || 0) + node.rate,
+          (outputs.get(node.itemName) || 0) + outputRate,
         );
       }
       node.byproducts.forEach((bp) => {
