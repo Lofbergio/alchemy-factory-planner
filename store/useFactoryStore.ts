@@ -63,6 +63,7 @@ const DEFAULT_FACTORY_CONFIG: Omit<
     selectedFuel: "",
     selfFuel: true,
     selfFertilizer: true,
+    optimizationMode: "resources",
 };
 
 interface FactoryStore {

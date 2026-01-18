@@ -112,18 +112,24 @@ export function FactorySettingsPanel({
         selectedFuel: activeFactory.config.selectedFuel || "",
         selfFuel: activeFactory.config.selfFuel ?? true,
         selfFertilizer: activeFactory.config.selfFertilizer ?? true,
+        optimizationMode: activeFactory.config.optimizationMode || "resources",
     };
 
     const sortedFertilizers = [...fertilizers].sort((a, b) => (a.nutrient_value || 0) - (b.nutrient_value || 0));
     const sortedFuels = [...fuels].sort((a, b) => (a.heat_value || 0) - (b.heat_value || 0));
 
-    const updateConfig = (field: "selectedFertilizer" | "selectedFuel" | "selfFuel" | "selfFertilizer", value: string | boolean) => {
+    const updateConfig = (field: "selectedFertilizer" | "selectedFuel" | "selfFuel" | "selfFertilizer" | "optimizationMode", value: string | boolean) => {
         updateFactoryConfig(activeFactory.id, { [field]: value });
     };
 
     const plannerOptions = [
         { value: "recursive", label: "Recursive (Tree-based)" },
         { value: "lp", label: "Matrix (Linear Programming)" },
+    ];
+
+    const optimizationOptions = [
+        { value: "resources", label: "Minimize Resources" },
+        { value: "cost", label: "Minimize Cost" },
     ];
 
     const fertilizerOptions = [
@@ -211,6 +217,22 @@ export function FactorySettingsPanel({
                         className="w-full bg-[var(--background-deep)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-xs text-[var(--text-secondary)] hover:border-[var(--border)]"
                     />
                 </div>
+
+                {activeFactory.plannerMode === "lp" && (
+                    <div>
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1.5 flex items-center tracking-wide">
+                            Optimization Mode
+                            <InfoTooltip text="Resources: treats all inputs equally, favoring byproduct utilization. Cost: uses in-game item prices to find the cheapest solution." />
+                        </label>
+                        <SearchableSelect
+                            options={optimizationOptions}
+                            value={config.optimizationMode}
+                            onChange={(val) => updateConfig("optimizationMode", val)}
+                            placeholder="Select Mode..."
+                            className="w-full bg-[var(--background-deep)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-xs text-[var(--text-secondary)] hover:border-[var(--border)]"
+                        />
+                    </div>
+                )}
             </div>
         </OrnatePanel>
     );

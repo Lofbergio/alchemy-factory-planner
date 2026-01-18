@@ -111,6 +111,7 @@ export interface PlannerConfig {
   selectedFuel?: string;
   selfFuel?: boolean; // If true, fuel is produced internally; if false, treated as external input
   selfFertilizer?: boolean; // If true, fertilizer is produced internally; if false, treated as external input
+  optimizationMode?: "resources" | "cost"; // resources = minimize total inputs, cost = minimize monetary cost
 }
 
 export interface ResearchState {

@@ -39,8 +39,9 @@ allRecipes.forEach((recipe) => {
  * Constraints:
  * - For each item: production - consumption + raw_purchase - available >= target (or 0)
  *
- * Objective:
- * - Minimize total cost of raw materials
+ * Objective (based on optimizationMode):
+ * - "economic": Minimize monetary cost of raw materials
+ * - "balanced": Minimize total raw materials with equal weight (favors byproduct utilization)
  */
 export function buildLPModel(
   config: PlannerConfig,
@@ -292,14 +293,23 @@ export function buildLPModel(
     constraints.set(`item_${itemName}`, { min: rhs });
   });
 
-  // Build objective: minimize cost of raw materials
+  // Build objective based on optimization mode
+  // - "cost": minimize monetary cost of raw materials (uses item cost/base_cost)
+  // - "resources": minimize total raw materials with equal weight (favors byproduct utilization)
   const objective = new Map<string, number>();
+  const useCostMode = config.optimizationMode === "cost";
+
   variables.forEach((_, varName) => {
     if (varName.startsWith("raw_")) {
-      const itemName = varName.slice(4); // Remove "raw_" prefix
-      const item = itemsMap.get(itemName);
-      const cost = item?.cost || item?.base_cost || 1000; // Default cost if not specified
-      objective.set(varName, cost);
+      if (useCostMode) {
+        const itemName = varName.slice(4); // Remove "raw_" prefix
+        const item = itemsMap.get(itemName);
+        const cost = item?.cost || item?.base_cost || 1000; // Default high cost if not specified
+        objective.set(varName, cost);
+      } else {
+        // Resources mode: equal weight for all raw materials
+        objective.set(varName, 1);
+      }
     }
   });
 
