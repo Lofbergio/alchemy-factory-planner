@@ -4,6 +4,7 @@ import { useFactoryStore } from "../../store/useFactoryStore";
 import { InfoTooltip } from "../ui/InfoTooltip";
 import { OrnatePanel } from "../ui/OrnatePanel";
 import { SearchableSelect } from "../ui/SearchableSelect";
+import { SegmentedToggle } from "../ui/SegmentedToggle";
 
 interface ProductionTargetsPanelProps {
     items: Item[]; // Sorted
@@ -122,14 +123,14 @@ export function FactorySettingsPanel({
         updateFactoryConfig(activeFactory.id, { [field]: value });
     };
 
-    const plannerOptions = [
-        { value: "recursive", label: "Recursive (Tree-based)" },
-        { value: "lp", label: "Matrix (Linear Programming)" },
+    const plannerOptions: { value: "recursive" | "lp"; label: string }[] = [
+        { value: "recursive", label: "Recursive" },
+        { value: "lp", label: "Matrix (LP)" },
     ];
 
-    const optimizationOptions = [
-        { value: "resources", label: "Minimize Resources" },
-        { value: "cost", label: "Minimize Cost" },
+    const optimizationOptions: { value: "resources" | "cost"; label: string }[] = [
+        { value: "resources", label: "Resources" },
+        { value: "cost", label: "Cost" },
     ];
 
     const fertilizerOptions = [
@@ -209,30 +210,24 @@ export function FactorySettingsPanel({
                         Planner Algorithm
                         <InfoTooltip text="Matrix (LP) is WIP but will be preferred. Recursive will be deprecated." />
                     </label>
-                    <SearchableSelect
+                    <SegmentedToggle
                         options={plannerOptions}
                         value={activeFactory.plannerMode || "lp"}
-                        onChange={(val) => setPlannerMode(activeFactory.id, val as "recursive" | "lp")}
-                        placeholder="Select Planner..."
-                        className="w-full bg-[var(--background-deep)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-xs text-[var(--text-secondary)] hover:border-[var(--border)]"
+                        onChange={(val) => setPlannerMode(activeFactory.id, val)}
                     />
                 </div>
 
-                {activeFactory.plannerMode === "lp" && (
-                    <div>
-                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1.5 flex items-center tracking-wide">
-                            Optimization Mode
-                            <InfoTooltip text="Resources: treats all inputs equally, favoring byproduct utilization. Cost: uses in-game item prices to find the cheapest solution." />
-                        </label>
-                        <SearchableSelect
-                            options={optimizationOptions}
-                            value={config.optimizationMode}
-                            onChange={(val) => updateConfig("optimizationMode", val)}
-                            placeholder="Select Mode..."
-                            className="w-full bg-[var(--background-deep)] border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-xs text-[var(--text-secondary)] hover:border-[var(--border)]"
-                        />
-                    </div>
-                )}
+                <div>
+                    <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1.5 flex items-center tracking-wide">
+                        Optimization Mode
+                        <InfoTooltip text="Resources: treats all inputs equally, favoring byproduct utilization. Cost: uses in-game item prices to find the cheapest solution." />
+                    </label>
+                    <SegmentedToggle
+                        options={optimizationOptions}
+                        value={config.optimizationMode as "resources" | "cost"}
+                        onChange={(val) => updateConfig("optimizationMode", val)}
+                    />
+                </div>
             </div>
         </OrnatePanel>
     );
