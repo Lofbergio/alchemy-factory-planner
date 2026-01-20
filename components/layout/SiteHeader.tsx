@@ -17,8 +17,14 @@ const codexLinks = [
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const [codexOpen, setCodexOpen] = useState(false);
+  // Track which pathname the dropdown was opened for - automatically closes on route change
+  const [openForPathname, setOpenForPathname] = useState<string | null>(null);
+  const codexOpen = openForPathname === pathname;
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const setCodexOpen = (open: boolean) => {
+    setOpenForPathname(open ? pathname : null);
+  };
 
   const isCalculator = pathname === "/";
   const isCodexActive =
@@ -30,17 +36,12 @@ export function SiteHeader() {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setCodexOpen(false);
+        setOpenForPathname(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // Close dropdown on route change
-  useEffect(() => {
-    setCodexOpen(false);
-  }, [pathname]);
 
   return (
     <header className="bg-[var(--background)] text-[var(--text-primary)] p-2 lg:p-8 pb-4 lg:pb-6 bg-arcane-pattern">
