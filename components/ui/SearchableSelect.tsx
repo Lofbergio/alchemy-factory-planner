@@ -81,9 +81,11 @@ export function SearchableSelect({
         if (open && containerRef.current) {
             const rect = containerRef.current.getBoundingClientRect();
 
+            // For fixed positioning, use viewport-relative coordinates directly
+            // (no scroll offset needed since fixed is relative to viewport)
             setDropdownStyles({
-                top: rect.bottom + window.scrollY + 4, // +4 for slight gap
-                left: rect.left + window.scrollX,
+                top: rect.bottom + 4, // +4 for slight gap
+                left: rect.left,
                 width: rect.width
             });
         }
