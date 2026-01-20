@@ -44,9 +44,9 @@ export function SiteHeader() {
   }, []);
 
   return (
-    <header className="bg-[var(--background)] text-[var(--text-primary)] p-2 lg:p-8 pb-4 lg:pb-6 bg-arcane-pattern">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-5 flex-1">
+    <header className="relative bg-[var(--background)] text-[var(--text-primary)] p-2 lg:p-8 pb-4 lg:pb-6 bg-arcane-pattern">
+      <div className="flex items-center justify-between gap-4 pr-20 md:pr-0">
+        <div className="flex items-center gap-3 md:gap-5 flex-1">
           {/* Mystical logo container */}
           <Link href="/" className="relative group">
             {/* Outer glow ring */}
@@ -71,131 +71,199 @@ export function SiteHeader() {
 
             <div className="flex items-center gap-2">
               <Link href="/">
-                <h1 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-cinzel)] text-gradient-gold tracking-wide hover:opacity-90 transition-opacity">
+                <h1 className="text-lg sm:text-2xl md:text-3xl font-bold font-[family-name:var(--font-cinzel)] text-gradient-gold tracking-wide hover:opacity-90 transition-opacity">
                   Alchemy Factory Tools
                 </h1>
               </Link>
               <Sparkles className="w-4 h-4 text-[var(--accent-purple)] opacity-60 hidden md:block" />
             </div>
 
+            {/* Desktop Navigation - inline under title */}
             <div className="hidden md:flex items-center gap-3 mt-1">
               <div className="w-8 h-[1px] bg-gradient-to-r from-[var(--accent-gold-dim)] to-transparent"></div>
-              <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider">
-                {isCalculator ? "Calculator" : isCodexActive ? "Codex" : "Tools"}
-              </span>
+
+              <nav className="flex items-center gap-2">
+                <Link
+                  href="/"
+                  className={cn(
+                    "relative flex items-center gap-1.5 py-1 px-2.5 rounded-md text-xs uppercase tracking-wider transition-all border",
+                    isCalculator
+                      ? "text-[var(--accent-gold)] bg-[var(--accent-gold)]/10 border-[var(--accent-gold-dim)]"
+                      : "text-[var(--text-muted)] border-transparent hover:text-[var(--text-primary)] hover:border-[var(--border)]"
+                  )}
+                >
+                  {isCalculator && (
+                    <>
+                      <div className="absolute -top-[1px] -left-[1px] w-1.5 h-1.5 border-t border-l border-[var(--accent-gold)] rounded-tl-sm"></div>
+                      <div className="absolute -top-[1px] -right-[1px] w-1.5 h-1.5 border-t border-r border-[var(--accent-gold)] rounded-tr-sm"></div>
+                      <div className="absolute -bottom-[1px] -left-[1px] w-1.5 h-1.5 border-b border-l border-[var(--accent-gold)] rounded-bl-sm"></div>
+                      <div className="absolute -bottom-[1px] -right-[1px] w-1.5 h-1.5 border-b border-r border-[var(--accent-gold)] rounded-br-sm"></div>
+                    </>
+                  )}
+                  <Calculator className="w-3 h-3" />
+                  <span>Calculator</span>
+                </Link>
+
+                <span className="text-[var(--border)] text-xs">•</span>
+
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setCodexOpen(!codexOpen)}
+                    className={cn(
+                      "relative flex items-center gap-1.5 py-1 px-2.5 rounded-md text-xs uppercase tracking-wider transition-all border",
+                      isCodexActive
+                        ? "text-[var(--accent-gold)] bg-[var(--accent-gold)]/10 border-[var(--accent-gold-dim)]"
+                        : "text-[var(--text-muted)] border-transparent hover:text-[var(--text-primary)] hover:border-[var(--border)]"
+                    )}
+                  >
+                    {isCodexActive && (
+                      <>
+                        <div className="absolute -top-[1px] -left-[1px] w-1.5 h-1.5 border-t border-l border-[var(--accent-gold)] rounded-tl-sm"></div>
+                        <div className="absolute -top-[1px] -right-[1px] w-1.5 h-1.5 border-t border-r border-[var(--accent-gold)] rounded-tr-sm"></div>
+                        <div className="absolute -bottom-[1px] -left-[1px] w-1.5 h-1.5 border-b border-l border-[var(--accent-gold)] rounded-bl-sm"></div>
+                        <div className="absolute -bottom-[1px] -right-[1px] w-1.5 h-1.5 border-b border-r border-[var(--accent-gold)] rounded-br-sm"></div>
+                      </>
+                    )}
+                    <BookOpen className="w-3 h-3" />
+                    <span>Codex</span>
+                    <ChevronDown
+                      className={cn(
+                        "w-3 h-3 transition-transform",
+                        codexOpen && "rotate-180"
+                      )}
+                    />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {codexOpen && (
+                    <div className="absolute left-0 mt-2 w-48 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-xl shadow-xl py-2 z-50 overflow-hidden">
+                      <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-[var(--accent-gold-dim)] to-transparent"></div>
+                      {codexLinks.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.comingSoon ? "#" : link.href}
+                          onClick={(e) => {
+                            if (link.comingSoon) e.preventDefault();
+                            else setCodexOpen(false);
+                          }}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-2.5 text-sm normal-case tracking-normal transition-all",
+                            link.comingSoon
+                              ? "text-[var(--text-muted)] cursor-not-allowed"
+                              : pathname.startsWith(link.href)
+                              ? "text-[var(--accent-gold)] bg-[var(--accent-gold)]/10"
+                              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)]"
+                          )}
+                        >
+                          <link.icon className="w-4 h-4" />
+                          <span>{link.label}</span>
+                          {link.comingSoon && (
+                            <span className="ml-auto text-[10px] uppercase tracking-wider text-[var(--text-muted)] bg-[var(--surface)] px-2 py-0.5 rounded">
+                              Soon
+                            </span>
+                          )}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </nav>
+
               <div className="w-8 h-[1px] bg-gradient-to-l from-[var(--accent-gold-dim)] to-transparent"></div>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
+        {/* Actions - positioned top-right on mobile */}
+        <div className="absolute top-2 right-2 md:static flex items-center gap-2 md:gap-3">
           <ThemeToggle />
           <FeedbackButton />
         </div>
       </div>
 
-      {/* Navigation - styled bar below header */}
-      <nav className="mt-4 relative">
-        {/* Decorative lines */}
-        <div className="absolute left-0 right-0 top-1/2 h-[1px] bg-gradient-to-r from-transparent via-[var(--border)] to-transparent"></div>
+      {/* Mobile Navigation - separate row for touch targets */}
+      <nav className="md:hidden mt-3 flex items-center justify-center gap-2">
+        <Link
+          href="/"
+          className={cn(
+            "relative flex items-center gap-1.5 py-1.5 px-3 rounded-md text-xs uppercase tracking-wider transition-all border",
+            isCalculator
+              ? "text-[var(--accent-gold)] bg-[var(--accent-gold)]/10 border-[var(--accent-gold-dim)]"
+              : "text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-primary)]"
+          )}
+        >
+          {isCalculator && (
+            <>
+              <div className="absolute -top-[1px] -left-[1px] w-1.5 h-1.5 border-t border-l border-[var(--accent-gold)] rounded-tl-sm"></div>
+              <div className="absolute -top-[1px] -right-[1px] w-1.5 h-1.5 border-t border-r border-[var(--accent-gold)] rounded-tr-sm"></div>
+              <div className="absolute -bottom-[1px] -left-[1px] w-1.5 h-1.5 border-b border-l border-[var(--accent-gold)] rounded-bl-sm"></div>
+              <div className="absolute -bottom-[1px] -right-[1px] w-1.5 h-1.5 border-b border-r border-[var(--accent-gold)] rounded-br-sm"></div>
+            </>
+          )}
+          <Calculator className="w-3.5 h-3.5" />
+          <span>Calculator</span>
+        </Link>
 
-        <div className="relative flex items-center justify-center gap-2 md:gap-4">
-          {/* Calculator Link */}
-          <Link
-            href="/"
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setCodexOpen(!codexOpen)}
             className={cn(
-              "relative flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium uppercase tracking-wider transition-all",
-              "bg-[var(--surface)] border",
-              isCalculator
-                ? "text-[var(--accent-gold)] border-[var(--accent-gold-dim)] shadow-[0_0_12px_rgba(var(--accent-gold-rgb),0.15)]"
-                : "text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-primary)] hover:border-[var(--accent-gold-dim)]/50"
+              "relative flex items-center gap-1.5 py-1.5 px-3 rounded-md text-xs uppercase tracking-wider transition-all border",
+              isCodexActive
+                ? "text-[var(--accent-gold)] bg-[var(--accent-gold)]/10 border-[var(--accent-gold-dim)]"
+                : "text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-primary)]"
             )}
           >
-            {isCalculator && (
+            {isCodexActive && (
               <>
-                <div className="absolute -top-[1px] -left-[1px] w-2 h-2 border-t border-l border-[var(--accent-gold)] rounded-tl"></div>
-                <div className="absolute -top-[1px] -right-[1px] w-2 h-2 border-t border-r border-[var(--accent-gold)] rounded-tr"></div>
-                <div className="absolute -bottom-[1px] -left-[1px] w-2 h-2 border-b border-l border-[var(--accent-gold)] rounded-bl"></div>
-                <div className="absolute -bottom-[1px] -right-[1px] w-2 h-2 border-b border-r border-[var(--accent-gold)] rounded-br"></div>
+                <div className="absolute -top-[1px] -left-[1px] w-1.5 h-1.5 border-t border-l border-[var(--accent-gold)] rounded-tl-sm"></div>
+                <div className="absolute -top-[1px] -right-[1px] w-1.5 h-1.5 border-t border-r border-[var(--accent-gold)] rounded-tr-sm"></div>
+                <div className="absolute -bottom-[1px] -left-[1px] w-1.5 h-1.5 border-b border-l border-[var(--accent-gold)] rounded-bl-sm"></div>
+                <div className="absolute -bottom-[1px] -right-[1px] w-1.5 h-1.5 border-b border-r border-[var(--accent-gold)] rounded-br-sm"></div>
               </>
             )}
-            <Calculator className="w-4 h-4" />
-            <span>Calculator</span>
-          </Link>
-
-          {/* Decorative separator */}
-          <div className="hidden sm:flex items-center gap-1 text-[var(--accent-gold-dim)]">
-            <div className="w-1 h-1 rounded-full bg-current"></div>
-            <div className="w-1.5 h-1.5 rounded-full bg-current"></div>
-            <div className="w-1 h-1 rounded-full bg-current"></div>
-          </div>
-
-          {/* Codex Dropdown */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setCodexOpen(!codexOpen)}
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Codex</span>
+            <ChevronDown
               className={cn(
-                "relative flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium uppercase tracking-wider transition-all",
-                "bg-[var(--surface)] border",
-                isCodexActive
-                  ? "text-[var(--accent-gold)] border-[var(--accent-gold-dim)] shadow-[0_0_12px_rgba(var(--accent-gold-rgb),0.15)]"
-                  : "text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-primary)] hover:border-[var(--accent-gold-dim)]/50"
+                "w-3.5 h-3.5 transition-transform",
+                codexOpen && "rotate-180"
               )}
-            >
-              {isCodexActive && (
-                <>
-                  <div className="absolute -top-[1px] -left-[1px] w-2 h-2 border-t border-l border-[var(--accent-gold)] rounded-tl"></div>
-                  <div className="absolute -top-[1px] -right-[1px] w-2 h-2 border-t border-r border-[var(--accent-gold)] rounded-tr"></div>
-                  <div className="absolute -bottom-[1px] -left-[1px] w-2 h-2 border-b border-l border-[var(--accent-gold)] rounded-bl"></div>
-                  <div className="absolute -bottom-[1px] -right-[1px] w-2 h-2 border-b border-r border-[var(--accent-gold)] rounded-br"></div>
-                </>
-              )}
-              <BookOpen className="w-4 h-4" />
-              <span>Codex</span>
-              <ChevronDown
-                className={cn(
-                  "w-4 h-4 transition-transform",
-                  codexOpen && "rotate-180"
-                )}
-              />
-            </button>
+            />
+          </button>
 
-            {/* Dropdown Menu */}
-            {codexOpen && (
-              <div className="absolute left-1/2 -translate-x-1/2 mt-3 w-48 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-xl shadow-xl py-2 z-50 overflow-hidden">
-                {/* Decorative top border */}
-                <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-[var(--accent-gold-dim)] to-transparent"></div>
-
-                {codexLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.comingSoon ? "#" : link.href}
-                    onClick={(e) => {
-                      if (link.comingSoon) e.preventDefault();
-                      else setCodexOpen(false);
-                    }}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-2.5 text-sm normal-case tracking-normal transition-all",
-                      link.comingSoon
-                        ? "text-[var(--text-muted)] cursor-not-allowed"
-                        : pathname.startsWith(link.href)
-                        ? "text-[var(--accent-gold)] bg-[var(--accent-gold)]/10"
-                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)]"
-                    )}
-                  >
-                    <link.icon className="w-4 h-4" />
-                    <span>{link.label}</span>
-                    {link.comingSoon && (
-                      <span className="ml-auto text-[10px] uppercase tracking-wider text-[var(--text-muted)] bg-[var(--surface)] px-2 py-0.5 rounded">
-                        Soon
-                      </span>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Mobile Dropdown Menu */}
+          {codexOpen && (
+            <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-xl shadow-xl py-2 z-50 overflow-hidden">
+              <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-[var(--accent-gold-dim)] to-transparent"></div>
+              {codexLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.comingSoon ? "#" : link.href}
+                  onClick={(e) => {
+                    if (link.comingSoon) e.preventDefault();
+                    else setCodexOpen(false);
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-2.5 text-sm normal-case tracking-normal transition-all",
+                    link.comingSoon
+                      ? "text-[var(--text-muted)] cursor-not-allowed"
+                      : pathname.startsWith(link.href)
+                      ? "text-[var(--accent-gold)] bg-[var(--accent-gold)]/10"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)]"
+                  )}
+                >
+                  <link.icon className="w-4 h-4" />
+                  <span>{link.label}</span>
+                  {link.comingSoon && (
+                    <span className="ml-auto text-[10px] uppercase tracking-wider text-[var(--text-muted)] bg-[var(--surface)] px-2 py-0.5 rounded">
+                      Soon
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </nav>
     </header>
